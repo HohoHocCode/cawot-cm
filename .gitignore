@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.python-version
+
+# Data — never commit raw datasets or generated artifacts
+pab_data/
+dummy_pab/
+data/
+*.zip
+*.tar
+*.tar.gz
+
+# Outputs (embeddings, clusters, checkpoints, eval results)
+outputs/
+checkpoints/
+*.npy
+*.npz
+*.pt
+*.pth
+*.safetensors
+
+# Experiment tracking
+wandb/
+mlruns/
+lightning_logs/
+runs/
+
+# Notebooks: ignore checkpoints but keep .ipynb
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Secrets
+.env
+*.key
+api_keys.txt

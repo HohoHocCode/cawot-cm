@@ -1,0 +1,63 @@
+seed: 42
+
+data:
+  # Path to PAB dataset root containing images/ and annotation JSON
+  root: "./pab_data"
+  train_json: "train.json"        # 1M synthetic train pairs
+  test_query_json: "test_query.json"   # 1978 real queries
+  test_gallery_json: "test_gallery.json"  # 36773 real gallery images
+  image_size: 224
+  # For Colab/sanity: limit to N samples. Set to null for full 1M.
+  subset_size: 50000
+  num_workers: 4
+
+embed:
+  model: "ViT-B-16"
+  pretrained: "openai"
+  batch_size: 256
+  device: "cuda"
+  output_dir: "./outputs/embeddings"
+  # Whether to compute text embeddings as well (V0 only uses image, but keep for V1)
+  compute_text: true
+
+cluster:
+  # K-means clusters. Standard: 5000 for 1M. Subset uses smaller K.
+  k: 500   # use 5000 for full 1M, scale ~ sqrt(N/2)
+  niter: 25
+  spherical: true
+  use_gpu: true
+  output_path: "./outputs/clusters.npz"
+
+coreset:
+  budget_ratio: 0.20   # 20% of N
+  # Methods: "random" | "v0"
+  method: "v0"
+  # V0-specific: farthest-from-centroid within each cluster
+  output_dir: "./outputs"
+
+train:
+  model: "ViT-B-16"
+  pretrained: "openai"
+  # Freeze backbone, unfreeze last N transformer layers
+  unfreeze_last_n_layers: 4
+  batch_size: 128
+  num_epochs: 5
+  lr: 1.0e-5
+  weight_decay: 0.1
+  warmup_steps: 100
+  temperature: 0.07   # InfoNCE temperature (CLIP uses learned, we keep fixed for stability)
+  use_learned_temp: true
+  grad_accum_steps: 1
+  amp: true
+  output_dir: "./outputs/checkpoints"
+  log_every: 50
+
+eval:
+  batch_size: 256
+  k_values: [1, 5, 10]
+  output_dir: "./outputs/eval"
+
+wandb:
+  enabled: false   # set true if you have an account
+  project: "cawot-cm-v0"
+  entity: null
