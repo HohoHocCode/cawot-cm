@@ -1,11 +1,18 @@
 seed: 42
 
 data:
-  # Path to PAB dataset root containing images/ and annotation JSON
+  # PAB dataset root produced by scripts/download_pab.py.
+  # Layout:
+  #   <root>/images/         flat: 000000.jpg, 000001.jpg, ...
+  #   <root>/train.json
+  #   <root>/test_query.json
+  #   <root>/test_gallery.json
+  # If you only downloaded a few zips, run scripts/filter_annotations.py first
+  # and switch train_json / test_gallery_json to the *_local.json files below.
   root: "./pab_data"
-  train_json: "train.json"        # 1M synthetic train pairs
-  test_query_json: "test_query.json"   # 1978 real queries
-  test_gallery_json: "test_gallery.json"  # 36773 real gallery images
+  train_json: "train.json"               # use "train_local.json" for partial downloads
+  test_query_json: "test_query.json"     # 1978 real queries
+  test_gallery_json: "test_gallery.json" # use "test_gallery_local.json" for partial downloads
   image_size: 224
   # For Colab/sanity: limit to N samples. Set to null for full 1M.
   subset_size: 50000

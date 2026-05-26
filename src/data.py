@@ -35,11 +35,34 @@ def _extract_caption(entry: dict) -> str:
     raise KeyError(f"No caption field in entry keys: {list(entry.keys())}")
 
 
-def _extract_image_path(entry: dict, root: Path) -> Path:
+def _extract_image_path(entry: dict, root: Path, images_subdir: str = "images") -> Path:
+    """Resolve an image to disk.
+
+    Resolution order:
+      1. If field value is absolute path → use as-is.
+      2. Try <root>/<as-given>.
+      3. If still not found, try <root>/<images_subdir>/<basename>  (handles flat layouts
+         like images/000001.jpg when JSON has just "000001.jpg" or "imgs/000001.jpg").
+
+    Returns the first candidate that exists, else the last-tried path (so the
+    eventual open() failure shows a helpful path).
+    """
     for k in ("image_path", "image", "img_path", "file_path"):
-        if k in entry:
-            p = Path(entry[k])
-            return p if p.is_absolute() else root / p
+        if k not in entry:
+            continue
+        raw = entry[k]
+        p = Path(raw)
+        if p.is_absolute():
+            return p
+        cand1 = root / p
+        if cand1.exists():
+            return cand1
+        cand2 = root / images_subdir / p.name
+        if cand2.exists():
+            return cand2
+        # Neither exists — return cand2 so the error message points at the
+        # expected flat-layout location.
+        return cand2
     raise KeyError(f"No image-path field in entry keys: {list(entry.keys())}")
 
 

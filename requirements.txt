@@ -20,3 +20,6 @@ wandb>=0.16.0
 
 # Eval
 einops>=0.7.0
+
+# Dataset download from Hugging Face
+huggingface_hub>=0.23.0
