@@ -1,54 +1,50 @@
 seed: 42
 
-# Paths to friend's precomputed qproxy outputs (qproxy/ folder from Drive).
-# Manifest stores absolute image_path values baked at friend's Kaggle run.
-# If running in a different env, set `path_remap` below to rewrite the prefix.
-qproxy:
-  manifest_path: "/kaggle/input/cawot-qproxy/image_subset_manifest.parquet"
-  embeddings_path: "/kaggle/input/cawot-qproxy/image_subset_embeddings.npy"
-  # filter_metadata.json says model = EVA02-E-14, embed_dim = 1024
-  embedding_model: "EVA02-E-14"
-  embedding_dim: 1024
-  # OPTIONAL path rewriting. Example: friend's manifest has paths like
-  #   /kaggle/input/datasets/vnhtbo/pab-eccv26-track4-train-webp-part-01-05/...
-  # If your Kaggle dataset slug is different, remap the prefix here:
-  path_remap: {}
-  # Example for a different Kaggle slug:
-  # path_remap:
-  #   "/kaggle/input/datasets/vnhtbo/pab-eccv26-track4-train-webp-part-01-05":
-  #     "/kaggle/input/pab-train-webp/Part_1_to_5"
-
 data:
-  # Legacy fields kept for the dummy / sanity path. Friend-data flow
-  # uses qproxy.manifest_path instead.
-  root: "./pab_data"
-  train_json: "train.json"
-  test_query_json: "test_query.json"
-  test_gallery_json: "test_gallery.json"
-  image_size: 224
-  subset_size: null
-  num_workers: 2
-  # Held-out (image, caption) val split size for image-text retrieval R@k
+  # Path to the PAB Track-4 image dataset (Parts 1-5) on Kaggle.
+  # Expected structure: <image_root>/Part 1/imgs_0/imgs_0/goal/*.webp, ...
+  image_root: "/kaggle/input/pab-eccv26-track4-train-webp-part-01-05"
+
+  # Path to a folder containing the JSONL annotation files (imgs_0.json,
+  # imgs_1.json, ...). One JSON object per line. Friend can either:
+  #   (a) upload these as a Kaggle dataset, or
+  #   (b) the notebook downloads them at runtime from HF (TruongVox/Cawot-dataset).
+  annotations_dir: "/kaggle/working/annotations"
+
+  # Random sample size from the full annotation pool. None = use everything
+  # whose shard is on disk. 50K is a good Kaggle P100 default (~20 min embed).
+  sample_size: 50000
+
+  # Held-out (image, caption) val pairs for image-text retrieval R@k.
   val_size: 2000
 
+  image_size: 224
+  num_workers: 2
+
+embed:
+  # CLIP model used for BOTH selection embeddings and downstream training.
+  # V0 keeps these consistent (unlike the V2 future, which can use a heavier
+  # model for selection).
+  model: "ViT-B-16"
+  pretrained: "openai"
+  batch_size: 128
+  device: "cuda"
+  output_dir: "/kaggle/working/outputs/embeddings"
+
 cluster:
-  # K-means on friend's ~47K subset. Rule of thumb: K ≈ √(N/2)
+  # K-means clusters. Rule of thumb: K ≈ √(N/2) → ~155 for 48K train pool.
   k: 150
   niter: 25
   spherical: true
   use_gpu: true
-  output_path: "./outputs/clusters.npz"
+  output_path: "/kaggle/working/outputs/clusters.npz"
 
 coreset:
   budget_ratio: 0.20
-  method: "v0"
-  output_dir: "./outputs"
+  output_dir: "/kaggle/working/outputs"
 
 train:
-  # Task model — what we fine-tune on the coreset.
-  # NOTE: this is independent of `qproxy.embedding_model` (which is what
-  # friend used to compute the selection embeddings). Selection model ≠
-  # task model is standard practice.
+  # Must match `embed.model` for V0 (we reuse the model for finetune).
   model: "ViT-B-16"
   pretrained: "openai"
   unfreeze_last_n_layers: 4
@@ -61,15 +57,10 @@ train:
   use_learned_temp: true
   grad_accum_steps: 1
   amp: true
-  output_dir: "./outputs/checkpoints"
+  output_dir: "/kaggle/working/outputs/checkpoints"
   log_every: 50
 
 eval:
   batch_size: 128
   k_values: [1, 5, 10]
-  output_dir: "./outputs/eval"
-
-wandb:
-  enabled: false
-  project: "cawot-cm-v0"
-  entity: null
+  output_dir: "/kaggle/working/outputs/eval"

@@ -1,14 +1,17 @@
-"""End-to-end V0 on the friend's qproxy subset.
+"""End-to-end V0 — independent of friend's qproxy work.
 
-Pipeline:
-  1. Load friend's manifest (.parquet) + embeddings (.npy)
-  2. Hold out a (image, caption) val split for image-text retrieval R@k
-  3. Cluster the remaining train pool with FAISS k-means (spherical)
-  4. Select two coresets at the same budget:
-       - random (baseline)
-       - v0 (farthest-from-centroid within each cluster)
-  5. Fine-tune CLIP ViT-B/16 on each coreset
-  6. Evaluate both checkpoints on the val split
+Pipeline (matches the plan: V0 = diversity-only baseline):
+
+  1. Load PAB JSONL annotations, discover image shards on disk, build a
+     random sample of N (= cfg.data.sample_size) (image, caption) entries.
+  2. Extract CLIP-B/16 image embeddings (cached to disk).
+  3. Hold out V (= cfg.data.val_size) pairs for image-text retrieval R@k.
+  4. FAISS k-means (spherical) over the remaining train pool.
+  5. Two coresets at the same budget:
+       - random       (baseline)
+       - v0           (farthest-from-centroid within each cluster)
+  6. Fine-tune CLIP-B/16 on each coreset.
+  7. Evaluate each + zero-shot anchor on the val split.
 
 Usage:
   python scripts/run_v0.py --config config.yaml
@@ -23,11 +26,12 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.cluster import kmeans_faiss, load_clusters, save_clusters
-from src.data import load_embeddings, load_manifest, make_train_val_split
+from src.data import TrainPoolDataset, build_pool, make_train_val_split
+from src.embed import extract_image_embeddings, load_clip
 from src.eval import evaluate_val_split
 from src.select import select_random, select_v0
-from src.train import train_with_manifest
-from src.utils import ensure_dir, load_config, set_seed, setup_logger
+from src.train import train_on_dataset
+from src.utils import ensure_dir, get_device, load_config, set_seed, setup_logger
 
 logger = setup_logger("run_v0")
 
@@ -39,35 +43,64 @@ def main():
 
     cfg = load_config(args.config)
     set_seed(cfg["seed"])
-    out_dir = ensure_dir(cfg["coreset"]["output_dir"])
-    cluster_path = Path(cfg["cluster"]["output_path"])
+    device = get_device("cuda")
 
-    # === Step 1: load friend's manifest + embeddings ===
-    logger.info(f"loading manifest from {cfg['qproxy']['manifest_path']}")
-    manifest = load_manifest(
-        cfg["qproxy"]["manifest_path"],
-        path_remap=cfg["qproxy"].get("path_remap") or None,
+    # === Step 1: build train pool (anns + shard map, no images loaded yet) ===
+    logger.info(f"building pool from annotations_dir={cfg['data']['annotations_dir']}, "
+                f"image_root={cfg['data']['image_root']}")
+    anns, shard_roots = build_pool(
+        annotations_dir=cfg["data"]["annotations_dir"],
+        image_root=cfg["data"]["image_root"],
+        sample_size=cfg["data"]["sample_size"],
+        seed=cfg["seed"],
     )
-    logger.info(f"manifest: {len(manifest)} rows")
+    N = len(anns)
+    logger.info(f"pool: {N} samples, shards on disk: {sorted(shard_roots)}")
 
-    logger.info(f"loading embeddings from {cfg['qproxy']['embeddings_path']}")
-    embeddings = load_embeddings(cfg["qproxy"]["embeddings_path"], expected_n=len(manifest))
-    logger.info(f"embeddings: shape={embeddings.shape}")
+    # === Step 2: extract embeddings (cached) ===
+    model, preprocess, tokenizer = load_clip(
+        cfg["embed"]["model"], cfg["embed"]["pretrained"], device
+    )
+    emb_dir = ensure_dir(cfg["embed"]["output_dir"])
+    emb_path = Path(emb_dir) / "image_embeddings.npy"
 
-    # === Step 2: held-out val split ===
-    val_size = cfg["data"]["val_size"]
-    train_idx, val_idx = make_train_val_split(len(manifest), val_size, seed=cfg["seed"])
+    if emb_path.exists():
+        embeddings = np.load(emb_path)
+        if embeddings.shape[0] != N:
+            logger.warning(f"cached embeddings have {embeddings.shape[0]} rows but pool is {N}; "
+                           f"re-extracting")
+            emb_path.unlink()
+
+    if not emb_path.exists():
+        embed_ds = TrainPoolDataset(
+            anns=anns, shard_roots=shard_roots, image_transform=preprocess, tokenizer=None
+        )
+        embeddings = extract_image_embeddings(
+            embed_ds, model, device,
+            batch_size=cfg["embed"]["batch_size"],
+            num_workers=cfg["data"]["num_workers"],
+            amp=cfg["train"]["amp"],
+        )
+        np.save(emb_path, embeddings)
+        logger.info(f"saved embeddings to {emb_path}  shape={embeddings.shape}")
+    else:
+        logger.info(f"using cached embeddings at {emb_path}  shape={embeddings.shape}")
+
+    # Free the embedding-extraction model — we'll reload per-run for finetune
+    del model
+    import torch
+    torch.cuda.empty_cache()
+
+    # === Step 3: train/val split ===
+    train_idx, val_idx = make_train_val_split(N, cfg["data"]["val_size"], seed=cfg["seed"])
+    train_emb = embeddings[train_idx]
     logger.info(f"split: {len(train_idx)} train pool / {len(val_idx)} val")
 
-    train_emb = embeddings[train_idx]
-    train_manifest = manifest.iloc[train_idx].reset_index(drop=True)
-    budget = int(round(cfg["coreset"]["budget_ratio"] * len(train_idx)))
-    logger.info(f"coreset budget: {budget} ({cfg['coreset']['budget_ratio']:.0%})")
-
-    # === Step 3: cluster ===
+    # === Step 4: cluster ===
+    cluster_path = Path(cfg["cluster"]["output_path"])
     if cluster_path.exists():
-        logger.info(f"using cached clusters at {cluster_path}")
         centroids, assignments = load_clusters(cluster_path)
+        logger.info(f"using cached clusters at {cluster_path}")
     else:
         centroids, assignments = kmeans_faiss(
             train_emb,
@@ -79,21 +112,39 @@ def main():
         )
         save_clusters(cluster_path, centroids, assignments)
 
-    # === Step 4: two coresets ===
+    # === Step 5: select coresets ===
+    budget = int(round(cfg["coreset"]["budget_ratio"] * len(train_idx)))
+    logger.info(f"coreset budget: {budget} samples ({cfg['coreset']['budget_ratio']:.0%})")
+
     rand_local = select_random(len(train_idx), budget, seed=cfg["seed"])
     v0_local = select_v0(train_emb, centroids, assignments, budget, seed=cfg["seed"])
-    # Indices above are positions into `train_manifest` (post train/val split).
-    np.save(out_dir / "coreset_random.npy", rand_local)
-    np.save(out_dir / "coreset_v0.npy", v0_local)
 
-    # === Step 5+6: train and eval each ===
-    results = {}
-    for name, indices in [("random", rand_local), ("v0", v0_local)]:
-        ckpt = train_with_manifest(cfg, train_manifest, indices, name)
-        results[name] = evaluate_val_split(cfg, manifest, val_idx, ckpt, name)
+    out_dir = ensure_dir(cfg["coreset"]["output_dir"])
+    np.save(Path(out_dir) / "coreset_random.npy", rand_local)
+    np.save(Path(out_dir) / "coreset_v0.npy", v0_local)
 
-    # Also evaluate zero-shot (no fine-tune) as anchor
-    results["zeroshot"] = evaluate_val_split(cfg, manifest, val_idx, None, "zeroshot")
+    # === Step 6 + 7: train and eval each ===
+    results: dict = {}
+
+    val_dataset = TrainPoolDataset(
+        anns=anns, shard_roots=shard_roots,
+        image_transform=preprocess, tokenizer=tokenizer,
+        indices=val_idx,
+    )
+
+    # Zero-shot anchor (no fine-tune)
+    results["zeroshot"] = evaluate_val_split(cfg, val_dataset, None, "zeroshot")
+
+    for name, local_indices in [("random", rand_local), ("v0", v0_local)]:
+        # local_indices are positions into train_idx; convert to pool positions
+        pool_indices = train_idx[local_indices]
+        train_dataset = TrainPoolDataset(
+            anns=anns, shard_roots=shard_roots,
+            image_transform=preprocess, tokenizer=tokenizer,
+            indices=pool_indices,
+        )
+        ckpt = train_on_dataset(cfg, train_dataset, name)
+        results[name] = evaluate_val_split(cfg, val_dataset, ckpt, name)
 
     summary_path = Path(cfg["eval"]["output_dir"]) / "summary.json"
     ensure_dir(summary_path.parent)

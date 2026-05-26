@@ -1,9 +1,10 @@
-"""CLIP embedding extraction for the train pool.
+"""CLIP embedding extraction for V0.
 
-Output:
-  - image_embeddings.npy  (N, D) float32, L2-normalized
-  - text_embeddings.npy   (N, D) float32, L2-normalized (optional)
-  - indices.npy           (N,) int64 — index into the train annotation list
+V0 path:  extract_image_embeddings(dataset, model, device, cfg)
+    Takes any Dataset that yields {"image": tensor} and returns L2-normalized
+    image embeddings (N, D) as a numpy float32 array, in dataset order.
+
+Legacy path: extract_embeddings(cfg) — for the dummy/JSON sanity flow.
 """
 from __future__ import annotations
 
@@ -28,36 +29,70 @@ def load_clip(model_name: str, pretrained: str, device: torch.device):
     return model, preprocess, tokenizer
 
 
+# -----------------------------------------------------------------------------
+# V0 PRIMARY
+# -----------------------------------------------------------------------------
+
+
+@torch.no_grad()
+def extract_image_embeddings(
+    dataset,
+    model,
+    device: torch.device,
+    batch_size: int = 128,
+    num_workers: int = 2,
+    amp: bool = True,
+) -> np.ndarray:
+    """Run `model.encode_image` over the dataset. L2-normalize.
+
+    Returns (N, D) float32 array in dataset order.
+    """
+    loader = DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
+
+    feats: list[np.ndarray] = []
+    for batch in tqdm(loader, desc="extract image embeddings"):
+        images = batch["image"].to(device, non_blocking=True)
+        with torch.cuda.amp.autocast(enabled=amp and device.type == "cuda"):
+            f = model.encode_image(images)
+            f = torch.nn.functional.normalize(f.float(), dim=-1)
+        feats.append(f.cpu().numpy())
+    return np.concatenate(feats, axis=0).astype(np.float32)
+
+
+# -----------------------------------------------------------------------------
+# LEGACY (dummy / JSON path)
+# -----------------------------------------------------------------------------
+
+
 @torch.no_grad()
 def extract_embeddings(cfg: dict) -> dict:
     device = get_device(cfg["embed"]["device"])
     out_dir = ensure_dir(cfg["embed"]["output_dir"])
-
     model, preprocess, tokenizer = load_clip(
         cfg["embed"]["model"], cfg["embed"]["pretrained"], device
     )
-
     dataset = PABTrainDataset(
         json_path=Path(cfg["data"]["root"]) / cfg["data"]["train_json"],
         image_root=cfg["data"]["root"],
         image_transform=preprocess,
         tokenizer=tokenizer if cfg["embed"]["compute_text"] else None,
-        subset_size=cfg["data"]["subset_size"],
+        subset_size=cfg["data"].get("subset_size"),
         seed=cfg["seed"],
         return_index=True,
     )
     N = len(dataset)
     logger.info(f"Pool size: {N}")
-
     loader = DataLoader(
-        dataset,
-        batch_size=cfg["embed"]["batch_size"],
-        shuffle=False,
-        num_workers=cfg["data"]["num_workers"],
-        pin_memory=True,
+        dataset, batch_size=cfg["embed"]["batch_size"], shuffle=False,
+        num_workers=cfg["data"]["num_workers"], pin_memory=True,
     )
 
-    # Discover embed dim with a dry run
     with torch.cuda.amp.autocast(enabled=device.type == "cuda"):
         sample = next(iter(loader))
         img_feat = model.encode_image(sample["image"].to(device))
@@ -66,7 +101,6 @@ def extract_embeddings(cfg: dict) -> dict:
     img_buf = np.zeros((N, D), dtype=np.float32)
     txt_buf = np.zeros((N, D), dtype=np.float32) if cfg["embed"]["compute_text"] else None
     idx_buf = np.zeros((N,), dtype=np.int64)
-
     cursor = 0
     for batch in tqdm(loader, desc="Embedding"):
         images = batch["image"].to(device, non_blocking=True)
@@ -74,29 +108,21 @@ def extract_embeddings(cfg: dict) -> dict:
             f_img = model.encode_image(images)
             f_img = torch.nn.functional.normalize(f_img.float(), dim=-1)
         bsz = f_img.shape[0]
-        img_buf[cursor : cursor + bsz] = f_img.cpu().numpy()
-
+        img_buf[cursor:cursor + bsz] = f_img.cpu().numpy()
         if txt_buf is not None:
             tokens = batch["text_tokens"].to(device, non_blocking=True)
             with torch.cuda.amp.autocast(enabled=device.type == "cuda"):
                 f_txt = model.encode_text(tokens)
                 f_txt = torch.nn.functional.normalize(f_txt.float(), dim=-1)
-            txt_buf[cursor : cursor + bsz] = f_txt.cpu().numpy()
-
-        idx_buf[cursor : cursor + bsz] = batch["index"].numpy()
+            txt_buf[cursor:cursor + bsz] = f_txt.cpu().numpy()
+        idx_buf[cursor:cursor + bsz] = batch["index"].numpy()
         cursor += bsz
 
     img_path = out_dir / "image_embeddings.npy"
-    idx_path = out_dir / "indices.npy"
     np.save(img_path, img_buf)
-    np.save(idx_path, idx_buf)
-    paths = {"image": str(img_path), "indices": str(idx_path)}
-    logger.info(f"Saved {img_path}  shape={img_buf.shape}")
-
+    np.save(out_dir / "indices.npy", idx_buf)
+    paths = {"image": str(img_path), "indices": str(out_dir / "indices.npy")}
     if txt_buf is not None:
-        txt_path = out_dir / "text_embeddings.npy"
-        np.save(txt_path, txt_buf)
-        paths["text"] = str(txt_path)
-        logger.info(f"Saved {txt_path}  shape={txt_buf.shape}")
-
+        np.save(out_dir / "text_embeddings.npy", txt_buf)
+        paths["text"] = str(out_dir / "text_embeddings.npy")
     return paths

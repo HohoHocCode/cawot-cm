@@ -15,17 +15,12 @@ import json
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from .data import (
-    FriendSubsetDataset,
-    PABGalleryDataset,
-    PABQueryDataset,
-)
+from .data import PABGalleryDataset, PABQueryDataset
 from .embed import load_clip
 from .utils import ensure_dir, get_device, setup_logger
 
@@ -80,16 +75,19 @@ def _i2t_t2i_recall(sims: np.ndarray, k_values=(1, 5, 10)) -> dict:
 
 def evaluate_val_split(
     cfg: dict,
-    manifest: pd.DataFrame,
-    val_indices: np.ndarray,
+    val_dataset: Dataset,
     checkpoint_path: str | None,
     run_name: str,
 ) -> dict:
-    """V0 sanity eval: image-text retrieval on held-out (image, caption) pairs."""
+    """V0 sanity eval: image-text retrieval on held-out (image, caption) pairs.
+
+    `val_dataset` must yield {"image": tensor, "text_tokens": LongTensor} in
+    1-to-1 order (image[i] is the correct match for text[i]).
+    """
     device = get_device("cuda")
     out_dir = ensure_dir(cfg["eval"]["output_dir"])
 
-    model, preprocess, tokenizer = load_clip(
+    model, _, _ = load_clip(
         cfg["train"]["model"], cfg["train"]["pretrained"], device
     )
     if checkpoint_path is not None and Path(checkpoint_path).exists():
@@ -101,14 +99,8 @@ def evaluate_val_split(
         logger.info("evaluating zero-shot CLIP (no checkpoint)")
     model.eval()
 
-    val_ds = FriendSubsetDataset(
-        manifest=manifest,
-        image_transform=preprocess,
-        tokenizer=tokenizer,
-        indices=val_indices,
-    )
     loader = DataLoader(
-        val_ds,
+        val_dataset,
         batch_size=cfg["eval"]["batch_size"],
         shuffle=False,
         num_workers=cfg["data"]["num_workers"],

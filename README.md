@@ -1,136 +1,163 @@
 # CAWOT-CM V0: Diversity-Only Coreset Baseline
 
-V0 baseline cho CAWOT-CM paper. Sanity check rằng intelligent selection (cluster + farthest-from-centroid) beats random sampling cho text-based person retrieval trên **PAB ECCV'26 Workshop Track 4**.
+V0 baseline cho CAWOT-CM paper. Sanity check rằng cluster + farthest-from-centroid selection beats random sampling cho text-based person retrieval trên **PAB ECCV'26 Workshop Track 4**.
 
-## Pipeline V0
+## V0 spec
+
+V0 = **clean baseline, hoàn toàn độc lập với V1/V2 prep work**.
 
 ```
-Friend's qproxy outputs (~47K filtered subset, EVA02-E-14 embeddings)
-  → Hold out 2K (image, caption) pairs for image-text retrieval val
-  → FAISS k-means (K=150, spherical) trên ~45K train pool
-  → 2 coresets at 20% budget:
+Random sample N images từ PAB train pool
+  → Extract CLIP ViT-B/16 image embeddings
+  → Hold out V (image, caption) pairs cho val
+  → FAISS k-means (K, spherical) trên (N − V) train pool
+  → 2 coresets cùng budget 20%:
         Random (baseline)
-        V0 (farthest-from-centroid within each cluster)
-  → Fine-tune CLIP ViT-B/16 trên mỗi coreset (last 4 layers + InfoNCE)
-  → Image-text retrieval R@1/5/10 trên val split
-  → Expect: V0 > Random by ~0.5-1.5% mean R@1
+        V0 (farthest-from-centroid trong mỗi cluster)
+  → Fine-tune CLIP-B/16 (last 4 layers + InfoNCE) trên mỗi coreset
+  → Image-text retrieval R@1/5/10 trên val
 ```
 
-V0 không có: cross-modal cost, Q_proxy budget allocation, Wasserstein gap, submodular optimization — đó là V1/V2.
+**V0 KHÔNG có** (đó là V1/V2):
+- ❌ Q_proxy / friend's filtered subset
+- ❌ EVA02-E-14 hay model selection khác CLIP-B/16
+- ❌ Cross-modal cost / submodular optimization
+- ❌ Wasserstein-aware budget
 
-## Tại sao dùng 2 model khác nhau?
+V0 self-contained: chỉ cần train images + JSONL annotations.
 
-- **Selection model = EVA02-E-14** (~5B params, 1024-dim): friend đã pre-compute embeddings trên 47K subset. Chỉ dùng cho clustering + selection.
-- **Task model = CLIP ViT-B/16** (~150M params, 512-dim): cái mà chúng ta fine-tune trên coreset. Fits Kaggle P100 (16GB VRAM), trong khi EVA02-E-14 cần A100 80GB.
+---
 
-Selection model ≠ task model là standard practice. Reviewer accept được.
+## Friend cần làm gì để chạy
 
-## Inputs cần có
+### Bước 1: Kaggle setup (1 lần)
 
-Trên máy chạy V0:
+1. Tạo Kaggle notebook mới (hoặc copy template `notebooks/kaggle_v0.ipynb` của repo)
+2. **Settings → Accelerator**: GPU P100
+3. **Settings → Internet**: ON (cần để download annotations từ HuggingFace)
+4. **Add Data**: thêm dataset `vnhtbo/pab-eccv26-track4-train-webp-part-01-05` (cái friend đã upload trước đây)
 
-1. **Friend's qproxy outputs** (~213MB) — folder chứa:
-   - `image_subset_manifest.parquet` — schema: `row_id, image_id, image_path, caption, scene, action, ...`
-   - `image_subset_embeddings.npy` — (47K, 1024) EVA02-E-14 embeddings, parallel với manifest
-   - `filter_metadata.json` — config friend's filter
+### Bước 2: Open notebook và Run all
 
-2. **Train images** (~10GB, webp) — friend's Kaggle dataset `vnhtbo/pab-eccv26-track4-train-webp-part-01-05` (Parts 1-5). Manifest `image_path` column đã trỏ tới `/kaggle/input/datasets/vnhtbo/pab-eccv26-track4-train-webp-part-01-05/Part X/...`. Nếu Kaggle dataset slug khác, dùng `qproxy.path_remap` trong `config.yaml`.
+Mở `notebooks/kaggle_v0.ipynb` từ repo này. Notebook làm tất cả:
 
-## Quick start (Kaggle)
+1. Clone repo
+2. Install deps (`open_clip_torch`, `faiss-gpu-cu12`, ...)
+3. Download annotations (75 JSONL files, ~390MB) từ HuggingFace `TruongVox/Cawot-dataset/train/`
+4. Patch config với đường dẫn Kaggle
+5. Sanity check resolve 1 image
+6. Chạy `scripts/run_v0.py` end-to-end (~50-70 phút trên P100)
+7. Show summary table
 
-1. New Kaggle notebook, Settings → Accelerator = GPU P100, Internet ON
-2. Add datasets:
-   - Friend's image dataset (e.g. `vnhtbo/pab-eccv26-track4-train-webp-part-01-05`)
-   - Friend's qproxy dataset (upload từ Drive)
-3. Clone repo + install:
-   ```python
-   !git clone https://github.com/HohoHocCode/cawot-cm.git
-   %cd cawot-cm
-   !pip install -q open_clip_torch faiss-gpu-cu12 pyarrow einops
-   ```
-4. Edit `config.yaml`:
-   - `qproxy.manifest_path` — path đến `image_subset_manifest.parquet`
-   - `qproxy.embeddings_path` — path đến `image_subset_embeddings.npy`
-   - `qproxy.path_remap` — nếu Kaggle dataset slug khác với friend's
-5. Run:
-   ```python
-   !python scripts/run_v0.py --config config.yaml
-   ```
+### Bước 3: Xem kết quả
 
-Kết quả ở `outputs/eval/summary.json`.
+Output ở `/kaggle/working/outputs/eval/summary.json`:
 
-Có template notebook `notebooks/kaggle_v0.ipynb` để copy thẳng.
-
-## Quick start (local / ThunderCompute)
-
-```bash
-pip install -r requirements.txt
-
-# Edit config.yaml: set absolute paths to friend's parquet + npy,
-# and qproxy.path_remap nếu image_path trong manifest cần rewrite.
-
-python scripts/run_v0.py --config config.yaml
+```json
+{
+  "zeroshot": {"t2i_R@1": ..., "i2t_R@1": ..., "mean_R@1": ...},
+  "random":   {"t2i_R@1": ..., "i2t_R@1": ..., "mean_R@1": ...},
+  "v0":       {"t2i_R@1": ..., "i2t_R@1": ..., "mean_R@1": ...}
+}
 ```
+
+**Mong đợi**: `v0.mean_R@1 > random.mean_R@1 > zeroshot.mean_R@1`. Gap V0-Random ~0.5-1.5%.
+
+Friend nên save Kaggle notebook version (Save & Run All) — sẽ persistent toàn bộ `outputs/` để mình review checkpoint + numbers sau.
+
+---
+
+## Required inputs
+
+V0 cần 2 thứ trên máy chạy:
+
+| Input | Mô tả | Cách lấy |
+|---|---|---|
+| **Train images** (~50GB unzipped) | Webp images trong `Part 1/imgs_N/imgs_N/<action>/*.webp` | Friend's Kaggle dataset `vnhtbo/pab-eccv26-track4-train-webp-part-01-05` (Parts 1-5) |
+| **Train annotations** (~390MB) | 75 JSONL files (`imgs_0.json` ... `imgs_74.json`) | Notebook auto-download từ HF `TruongVox/Cawot-dataset/train/` |
+
+Annotation JSONL schema (1 entry / dòng):
+```json
+{"image": "train/imgs_0/goal/0.jpg", "caption": "...", "image_id": "0_0", "scene": "...", "normal": "..."}
+```
+
+Code tự rewrite `.jpg` extension → `.webp` và Part-N structure khi resolve image trên disk.
+
+---
+
+## Config knobs
+
+`config.yaml`:
+- `data.sample_size: 50000` — random sample size. Tăng nếu có thời gian (full pool ~500K trên Parts 1-5).
+- `data.val_size: 2000` — held-out pairs cho R@k eval.
+- `cluster.k: 150` — rule of thumb √(N/2). Tăng nếu sample_size lớn hơn.
+- `coreset.budget_ratio: 0.20` — coreset size = 20% của train pool sau val split.
+- `train.num_epochs: 3` — đủ cho V0 sanity. Tăng nếu loss chưa converged.
+- `train.batch_size: 96` — fit Kaggle P100 16GB với amp.
+
+---
 
 ## Project structure
 
 ```
 cawot-cm-v0/
-├── config.yaml                 # qproxy paths, cluster/coreset/train/eval config
+├── config.yaml                  # All knobs in one file
 ├── src/
-│   ├── data.py                 # FriendSubsetDataset (parquet-based) + legacy JSON loaders
-│   ├── embed.py                # CLIP embedding extraction (legacy path only)
-│   ├── cluster.py              # FAISS k-means spherical
-│   ├── select.py               # select_random + select_v0 (farthest-from-centroid)
-│   ├── train.py                # train_with_manifest (friend-data) + train_with_coreset (legacy)
-│   ├── eval.py                 # evaluate_val_split (image-text R@k) + legacy person-id eval
+│   ├── data.py                  # ★ TrainPoolDataset + build_pool (JSONL annotations → images)
+│   ├── embed.py                 # extract_image_embeddings (CLIP-B/16)
+│   ├── cluster.py               # FAISS k-means spherical
+│   ├── select.py                # select_random + select_v0 (farthest-from-centroid)
+│   ├── train.py                 # train_on_dataset (CLIP last-4-layers + InfoNCE)
+│   ├── eval.py                  # image-text retrieval R@k on val split
 │   └── utils.py
 ├── scripts/
-│   ├── run_v0.py               # ★ END-TO-END runner — primary entry point
-│   ├── make_dummy_data.py      # tạo PAB-like data giả cho pipeline sanity (không dùng EVA02 path)
-│   ├── 01_extract_embeddings.py # legacy: extract CLIP embeddings từ JSON (cho dummy mode)
-│   ├── 02_select_coreset.py    # legacy
-│   ├── 03_train.py             # legacy
-│   ├── 04_evaluate.py          # legacy
-│   ├── download_pab.py         # legacy: download từ HF (không dùng nữa, data chuyển sang Kaggle)
-│   └── filter_annotations.py   # legacy
+│   ├── run_v0.py                # ★ END-TO-END runner — primary entry point
+│   ├── make_dummy_data.py       # Pipeline sanity với data giả (không cần PAB)
+│   └── 01-04 + others           # Legacy (dummy-data path), không dùng cho V0 chính
 └── notebooks/
-    ├── kaggle_v0.ipynb         # ★ Kaggle end-to-end demo
-    └── colab_v0.ipynb          # legacy Colab demo (dummy mode)
+    └── kaggle_v0.ipynb          # ★ Kaggle template
 ```
 
-## Eval setup
+`★` = file friend cần biết. Còn lại là internals.
 
-V0 dùng **image-text retrieval R@k trên held-out val** thay vì person-id retrieval. Lý do:
-- PAB ECCV'26 Track 4 test set có ground-truth person id **bị mask cố ý** (competition track) → không eval local được.
-- Image-text retrieval (mỗi caption matches đúng image của nó) chỉ cần (image, caption) pairs từ train pool → đủ cho V0 sanity.
-- Real eval cho competition: sau khi V0 work, generate predictions trên `name-masked_test_set/gallery.zip` và submit lên ECCV leaderboard.
+---
 
-Metrics output:
-- `t2i_R@1/5/10`: text → image retrieval
-- `i2t_R@1/5/10`: image → text retrieval
-- `mean_R@1`: average của hai chiều
+## Eval setup — tại sao không phải retrieval với person ID?
 
-## Expected results (Kaggle P100, V0 vs Random, 20% budget on ~45K pool)
+PAB Track 4 test set có person ID **bị mask cố ý** (competition track) → local không có ground truth. Thay vào đó V0 dùng:
 
-| Method | Expected mean R@1 |
+**Image-text retrieval R@k trên held-out val split**:
+- 2K (image, caption) pairs tách từ train pool
+- Ground truth: `image[i]` matches `text[i]` (1-to-1 theo index)
+- Compute cosine sim matrix → rank
+- 6 numbers: `t2i_R@{1,5,10}`, `i2t_R@{1,5,10}`, plus `mean_R@1`
+
+Đây là eval chuẩn trong CLIP/BLIP papers cho cross-modal alignment. Đủ rigorous để confirm V0 > Random.
+
+Khi nào dùng real test set: sau khi V0 work, generate predictions trên `name-masked_test_set/gallery.zip` của Track 4 và submit lên ECCV leaderboard.
+
+---
+
+## Troubleshooting
+
+| Vấn đề | Nguyên nhân + fix |
 |---|---|
-| Zero-shot CLIP-B/16 | ~30-40% (baseline anchor) |
-| Random | ~40-50% |
-| V0 | ~41-52% (+0.5-1.5% over Random) |
+| `No shard folders found under <image_root>` | Kaggle image dataset chưa được add, hoặc slug khác. Edit `IMAGE_ROOT` ở cell 5 của notebook. |
+| `Loaded 0 annotations` | Annotations dir trống. Re-run cell 4 (HF download). |
+| Out of memory khi training | Giảm `train.batch_size` (96 → 64). |
+| `mean_R@1` của V0 ≤ Random | Bug ở select.py hoặc K wrong scale. Sanity check K = √(N/2). |
+| Cả V0 và Random ~zeroshot | Training collapsed. Check LR (1e-5 default), check loss curve trong stdout. |
 
-Numbers tuyệt đối phụ thuộc vào pool size + epochs + LR. Cái quan trọng: **V0 > Random consistently**.
+---
 
-Nếu V0 ≤ Random → có bug ở pipeline hoặc K_clusters sai scale.
+## V0 → V1 → V2 roadmap
 
-## V0 → V1 → V2
+V0 ở đây là sanity baseline. Khi V0 confirmed work:
 
-V0 chỉ là sanity baseline. Plan tiếp theo:
+| Version | Thêm | Reuse từ V0 |
+|---|---|---|
+| **V0 (current)** | cluster + farthest-from-centroid trên CLIP embeddings | — |
+| **V1** | + cross-modal cost (image+text+alignment, rank-normalized) + submodular facility location | Pipeline, eval, data loaders |
+| **V2** | + friend's `qproxy/` (queries.json + EVA02 embeddings + max_sim) + Wasserstein-aware budget | + V1 method |
 
-| Version | Thêm gì |
-|---|---|
-| V0 (current) | cluster + farthest-from-centroid, proportional budget |
-| V1 | + cross-modal cost (image+text+alignment, rank-normalized) + submodular facility location (submodlib) |
-| V2 | + Q_proxy (friend đã có queries.json + text_embeddings.npy + max_sim_raw.npy) + Wasserstein-aware budget allocation |
-
-Friend's qproxy folder đã có đủ data cho cả 3 versions — V1/V2 sẽ tái sử dụng cùng manifest + embeddings.
+Friend's `qproxy/` folder vẫn còn nguyên — sẽ dùng cho V2 sau khi V0 + V1 confirmed.

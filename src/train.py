@@ -12,13 +12,12 @@ import math
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import torch
 import torch.nn.functional as F
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
 
-from .data import FriendSubsetDataset, PABTrainDataset
+from .data import PABTrainDataset
 from .embed import load_clip
 from .utils import ensure_dir, get_device, setup_logger
 
@@ -186,15 +185,14 @@ def train_with_coreset(cfg: dict, coreset_indices_path: str, run_name: str) -> s
 
 
 # -----------------------------------------------------------------------------
-# Friend-data variant — trains directly off the parquet manifest. Indices are
-# integer positions into the manifest rows (parallel with the embedding npy).
+# V0 variant — train any pre-built Dataset that yields {"image", "text_tokens"}.
+# Caller constructs the dataset (e.g. TrainPoolDataset with coreset indices).
 # -----------------------------------------------------------------------------
 
 
-def train_with_manifest(
+def train_on_dataset(
     cfg: dict,
-    manifest: pd.DataFrame,
-    coreset_indices: np.ndarray,
+    dataset: Dataset,
     run_name: str,
 ) -> str:
     device = get_device("cuda")
@@ -206,12 +204,6 @@ def train_with_manifest(
     model.train()
     _unfreeze_last_n_layers(model, cfg["train"]["unfreeze_last_n_layers"])
 
-    dataset = FriendSubsetDataset(
-        manifest=manifest,
-        image_transform=preprocess,
-        tokenizer=tokenizer,
-        indices=coreset_indices,
-    )
     logger.info(f"[{run_name}] training set: {len(dataset)} samples")
 
     loader = DataLoader(
