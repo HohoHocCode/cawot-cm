@@ -1,58 +1,63 @@
 seed: 42
 
-data:
-  # PAB dataset root produced by scripts/download_pab.py.
-  # Layout:
-  #   <root>/images/         flat: 000000.jpg, 000001.jpg, ...
-  #   <root>/train.json
-  #   <root>/test_query.json
-  #   <root>/test_gallery.json
-  # If you only downloaded a few zips, run scripts/filter_annotations.py first
-  # and switch train_json / test_gallery_json to the *_local.json files below.
-  root: "./pab_data"
-  train_json: "train.json"               # use "train_local.json" for partial downloads
-  test_query_json: "test_query.json"     # 1978 real queries
-  test_gallery_json: "test_gallery.json" # use "test_gallery_local.json" for partial downloads
-  image_size: 224
-  # For Colab/sanity: limit to N samples. Set to null for full 1M.
-  subset_size: 50000
-  num_workers: 4
+# Paths to friend's precomputed qproxy outputs (qproxy/ folder from Drive).
+# Manifest stores absolute image_path values baked at friend's Kaggle run.
+# If running in a different env, set `path_remap` below to rewrite the prefix.
+qproxy:
+  manifest_path: "/kaggle/input/cawot-qproxy/image_subset_manifest.parquet"
+  embeddings_path: "/kaggle/input/cawot-qproxy/image_subset_embeddings.npy"
+  # filter_metadata.json says model = EVA02-E-14, embed_dim = 1024
+  embedding_model: "EVA02-E-14"
+  embedding_dim: 1024
+  # OPTIONAL path rewriting. Example: friend's manifest has paths like
+  #   /kaggle/input/datasets/vnhtbo/pab-eccv26-track4-train-webp-part-01-05/...
+  # If your Kaggle dataset slug is different, remap the prefix here:
+  path_remap: {}
+  # Example for a different Kaggle slug:
+  # path_remap:
+  #   "/kaggle/input/datasets/vnhtbo/pab-eccv26-track4-train-webp-part-01-05":
+  #     "/kaggle/input/pab-train-webp/Part_1_to_5"
 
-embed:
-  model: "ViT-B-16"
-  pretrained: "openai"
-  batch_size: 256
-  device: "cuda"
-  output_dir: "./outputs/embeddings"
-  # Whether to compute text embeddings as well (V0 only uses image, but keep for V1)
-  compute_text: true
+data:
+  # Legacy fields kept for the dummy / sanity path. Friend-data flow
+  # uses qproxy.manifest_path instead.
+  root: "./pab_data"
+  train_json: "train.json"
+  test_query_json: "test_query.json"
+  test_gallery_json: "test_gallery.json"
+  image_size: 224
+  subset_size: null
+  num_workers: 2
+  # Held-out (image, caption) val split size for image-text retrieval R@k
+  val_size: 2000
 
 cluster:
-  # K-means clusters. Standard: 5000 for 1M. Subset uses smaller K.
-  k: 500   # use 5000 for full 1M, scale ~ sqrt(N/2)
+  # K-means on friend's ~47K subset. Rule of thumb: K ≈ √(N/2)
+  k: 150
   niter: 25
   spherical: true
   use_gpu: true
   output_path: "./outputs/clusters.npz"
 
 coreset:
-  budget_ratio: 0.20   # 20% of N
-  # Methods: "random" | "v0"
+  budget_ratio: 0.20
   method: "v0"
-  # V0-specific: farthest-from-centroid within each cluster
   output_dir: "./outputs"
 
 train:
+  # Task model — what we fine-tune on the coreset.
+  # NOTE: this is independent of `qproxy.embedding_model` (which is what
+  # friend used to compute the selection embeddings). Selection model ≠
+  # task model is standard practice.
   model: "ViT-B-16"
   pretrained: "openai"
-  # Freeze backbone, unfreeze last N transformer layers
   unfreeze_last_n_layers: 4
-  batch_size: 128
-  num_epochs: 5
+  batch_size: 96
+  num_epochs: 3
   lr: 1.0e-5
   weight_decay: 0.1
   warmup_steps: 100
-  temperature: 0.07   # InfoNCE temperature (CLIP uses learned, we keep fixed for stability)
+  temperature: 0.07
   use_learned_temp: true
   grad_accum_steps: 1
   amp: true
@@ -60,11 +65,11 @@ train:
   log_every: 50
 
 eval:
-  batch_size: 256
+  batch_size: 128
   k_values: [1, 5, 10]
   output_dir: "./outputs/eval"
 
 wandb:
-  enabled: false   # set true if you have an account
+  enabled: false
   project: "cawot-cm-v0"
   entity: null
