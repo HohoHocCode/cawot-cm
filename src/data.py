@@ -155,16 +155,28 @@ class TrainPoolDataset(Dataset):
         return len(self.anns)
 
     def _resolve_image_path(self, image_field: str) -> Path:
-        # image_field like "train/imgs_0/goal/0.jpg"
+        """Resolve annotation's relative path → existing file on disk.
+
+        Annotation says e.g. "train/imgs_0/goal/0.jpg". On disk the image may be
+        .jpg (HF zips) or .webp (friend's Kaggle re-encode). We try the original
+        extension first, then the alternative.
+        """
         rel = image_field
         if rel.startswith("train/"):
             rel = rel[len("train/"):]
         rel_path = Path(rel)
         shard = rel_path.parts[0]
         if shard not in self.shard_roots:
-            raise KeyError(f"Shard {shard} not found on disk. Available: {list(self.shard_roots)[:5]}...")
-        sub = Path(*rel_path.parts[1:]).with_suffix(".webp")
-        return self.shard_roots[shard] / sub
+            raise KeyError(f"Shard {shard} not on disk. Available: {sorted(self.shard_roots)[:5]}...")
+        base = self.shard_roots[shard] / Path(*rel_path.parts[1:]).with_suffix("")
+        orig_ext = rel_path.suffix or ".jpg"
+        for ext in [orig_ext, ".jpg", ".webp", ".png"]:
+            cand = base.with_suffix(ext)
+            if cand.exists():
+                return cand
+        # None exist — return the original-extension path so the error message
+        # points at the most expected location.
+        return base.with_suffix(orig_ext)
 
     def __getitem__(self, idx: int):
         entry = self.anns[idx]

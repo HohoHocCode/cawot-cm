@@ -1,15 +1,12 @@
 seed: 42
 
 data:
-  # Path to the PAB Track-4 image dataset (Parts 1-5) on Kaggle.
-  # Expected structure: <image_root>/Part 1/imgs_0/imgs_0/goal/*.webp, ...
-  image_root: "/kaggle/input/pab-eccv26-track4-train-webp-part-01-05"
-
-  # Path to a folder containing the JSONL annotation files (imgs_0.json,
-  # imgs_1.json, ...). One JSON object per line. Friend can either:
-  #   (a) upload these as a Kaggle dataset, or
-  #   (b) the notebook downloads them at runtime from HF (TruongVox/Cawot-dataset).
-  annotations_dir: "/kaggle/working/annotations"
+  # PAB data downloaded from HuggingFace via scripts/setup_data.py.
+  # Layout produced by that script:
+  #   <image_root>/imgs_0/goal/0.jpg, <image_root>/imgs_1/goal/0.jpg, ...
+  #   <annotations_dir>/imgs_0.json, imgs_1.json, ...
+  image_root: "/kaggle/working/pab_data/images"
+  annotations_dir: "/kaggle/working/pab_data/annotations"
 
   # Random sample size from the full annotation pool. None = use everything
   # whose shard is on disk. 50K is a good Kaggle P100 default (~20 min embed).
