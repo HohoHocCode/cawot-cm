@@ -1,0 +1,209 @@
+python scripts/run_sweep.py --config config.yaml
+[10:42:22] INFO run_sweep: methods=['random', 'v0', 'v0_proto', 'v1']  budgets=[0.05, 0.1, 0.2, 0.4]  seeds=[42]  needs_text=True
+[10:42:22] INFO run_sweep: pool: 50000 samples, shards: ['imgs_0', 'imgs_1', 'imgs_2', 'imgs_3', 'imgs_4']
+open_clip_model.safetensors: 100%|██████████████████████████████████████████████████████████████████████████████| 599M/599M [00:05<00:00, 106MB/s]
+/home/ubuntu/.local/lib/python3.12/site-packages/open_clip/factory.py:450: UserWarning: QuickGELU mismatch between final model config (quick_gelu=False) and pretrained tag 'openai' (quick_gelu=True).
+  warnings.warn(
+extract image+text embeddings:   0%|                                                                                      | 0/391 [00:00<?, ?it/s]/home/ubuntu/cawot-cm-v0/src/embed.py:94: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=amp and device.type == "cuda"):
+extract image+text embeddings: 100%|████████████████████████████████████████████████████████████████████████████| 391/391 [14:12<00:00,  2.18s/it]
+[10:57:01] INFO run_sweep: saved embeddings image(50000, 512) text(50000, 512)
+[10:57:01] INFO run_sweep: split: 45000 train pool / 5000 val (FIXED)
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+WARNING:huggingface_hub.utils._http:Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[10:57:05] INFO eval: evaluating zero-shot CLIP (no checkpoint)
+encode val:   0%|                                                                                                          | 0/40 [00:00<?, ?it/s]/home/ubuntu/cawot-cm-v0/src/eval.py:43: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=amp):
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:26<00:00,  2.15s/it]
+[10:58:32] INFO eval: [zeroshot] {'t2i_R@1': 59.160000000000004, 't2i_R@5': 84.42, 't2i_R@10': 91.0, 'i2t_R@1': 58.9, 'i2t_R@5': 85.46000000000001, 'i2t_R@10': 92.16, 'mean_R@1': 59.03, 'n_pairs': 5000}
+[10:58:32] INFO run_sweep: zeroshot mean_R@1 = 59.03
+[10:58:32] INFO cluster: FAISS k-means: n=45000, d=512, k=150, niter=25, spherical=True, gpu=True
+Clustering 45000 points in 512D to 150 clusters, redo 1 times, 25 iterations
+  Preprocessing in 0.04 s
+  Iteration 24 (12.25 s, search 12.12 s): objective=38527.4 imbalance=1.186 nsplit=0       
+[10:58:49] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[10:58:49] INFO train: [random_b5_s42] training set: 2250 samples
+/home/ubuntu/cawot-cm-v0/src/train.py:225: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  scaler = torch.cuda.amp.GradScaler(enabled=cfg["train"]["amp"])
+[random_b5_s42] epoch 1/3:   0%|                                                                                           | 0/23 [00:00<?, ?it/s]/home/ubuntu/cawot-cm-v0/src/train.py:240: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with torch.cuda.amp.autocast(enabled=cfg["train"]["amp"]):
+[random_b5_s42] epoch 1/3: 100%|██████████████████████████████████████████████████████████████████████████████████| 23/23 [00:38<00:00,  1.68s/it]
+[random_b5_s42] epoch 2/3: 100%|██████████████████████████████████████████████████████████████████████████████████| 23/23 [00:39<00:00,  1.71s/it]
+[random_b5_s42] epoch 3/3: 100%|██████████████████████████████████████████████████████████████████████████████████| 23/23 [00:39<00:00,  1.70s/it]
+[11:00:48] INFO train: saved outputs/checkpoints/random_b5_s42.pt
+[11:00:52] INFO eval: loaded outputs/checkpoints/random_b5_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:27<00:00,  2.19s/it]
+[11:02:20] INFO eval: [random_b5_s42] {'t2i_R@1': 79.80000000000001, 't2i_R@5': 96.12, 't2i_R@10': 98.34, 'i2t_R@1': 80.08, 'i2t_R@5': 96.6, 'i2t_R@10': 98.94, 'mean_R@1': 79.94, 'n_pairs': 5000}
+[11:02:20] INFO run_sweep: [random_b5_s42] mean_R@1 = 79.94
+[11:02:20] INFO select: [v0-farthest] selected 2250 (target 2250)
+[11:02:24] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[11:02:24] INFO train: [v0_b5_s42] training set: 2250 samples
+[v0_b5_s42] epoch 1/3: 100%|██████████████████████████████████████████████████████████████████████████████████████| 23/23 [00:38<00:00,  1.67s/it]
+[v0_b5_s42] epoch 2/3: 100%|██████████████████████████████████████████████████████████████████████████████████████| 23/23 [00:39<00:00,  1.71s/it]
+[v0_b5_s42] epoch 3/3: 100%|██████████████████████████████████████████████████████████████████████████████████████| 23/23 [00:38<00:00,  1.69s/it]
+[11:04:23] INFO train: saved outputs/checkpoints/v0_b5_s42.pt
+[11:04:28] INFO eval: loaded outputs/checkpoints/v0_b5_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:42<00:00,  2.56s/it]
+[11:06:10] INFO eval: [v0_b5_s42] {'t2i_R@1': 75.44, 't2i_R@5': 93.88, 't2i_R@10': 97.28, 'i2t_R@1': 75.02, 'i2t_R@5': 94.8, 'i2t_R@10': 97.92, 'mean_R@1': 75.22999999999999, 'n_pairs': 5000}
+[11:06:10] INFO run_sweep: [v0_b5_s42] mean_R@1 = 75.23
+[11:06:11] INFO select: [v0-proto] selected 2250 (target 2250)
+[11:06:14] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[11:06:14] INFO train: [v0_proto_b5_s42] training set: 2250 samples
+[v0_proto_b5_s42] epoch 1/3: 100%|████████████████████████████████████████████████████████████████████████████████| 23/23 [00:39<00:00,  1.74s/it]
+[v0_proto_b5_s42] epoch 2/3: 100%|████████████████████████████████████████████████████████████████████████████████| 23/23 [00:38<00:00,  1.68s/it]
+[v0_proto_b5_s42] epoch 3/3: 100%|████████████████████████████████████████████████████████████████████████████████| 23/23 [00:46<00:00,  2.02s/it]
+[11:08:22] INFO train: saved outputs/checkpoints/v0_proto_b5_s42.pt
+[11:08:26] INFO eval: loaded outputs/checkpoints/v0_proto_b5_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:34<00:00,  2.37s/it]
+[11:10:02] INFO eval: [v0_proto_b5_s42] {'t2i_R@1': 81.06, 't2i_R@5': 96.14, 't2i_R@10': 98.3, 'i2t_R@1': 83.04, 'i2t_R@5': 97.48, 'i2t_R@10': 99.2, 'mean_R@1': 82.05000000000001, 'n_pairs': 5000}
+[11:10:02] INFO run_sweep: [v0_proto_b5_s42] mean_R@1 = 82.05
+[11:10:10] INFO select: [v1] selected 2250 (target 2250)
+[11:10:13] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[11:10:13] INFO train: [v1_b5_s42] training set: 2250 samples
+[v1_b5_s42] epoch 1/3: 100%|██████████████████████████████████████████████████████████████████████████████████████| 23/23 [00:39<00:00,  1.74s/it]
+[v1_b5_s42] epoch 2/3: 100%|██████████████████████████████████████████████████████████████████████████████████████| 23/23 [00:38<00:00,  1.68s/it]
+[v1_b5_s42] epoch 3/3: 100%|██████████████████████████████████████████████████████████████████████████████████████| 23/23 [00:39<00:00,  1.70s/it]
+[11:12:13] INFO train: saved outputs/checkpoints/v1_b5_s42.pt
+[11:12:18] INFO eval: loaded outputs/checkpoints/v1_b5_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:39<00:00,  2.49s/it]
+[11:13:58] INFO eval: [v1_b5_s42] {'t2i_R@1': 79.96, 't2i_R@5': 95.94, 't2i_R@10': 98.38, 'i2t_R@1': 81.34, 'i2t_R@5': 97.16, 'i2t_R@10': 99.11999999999999, 'mean_R@1': 80.65, 'n_pairs': 5000}
+[11:13:58] INFO run_sweep: [v1_b5_s42] mean_R@1 = 80.65
+[11:14:02] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[11:14:02] INFO train: [random_b10_s42] training set: 4500 samples
+[random_b10_s42] epoch 1/3: 100%|█████████████████████████████████████████████████████████████████████████████████| 46/46 [01:14<00:00,  1.62s/it]
+[random_b10_s42] epoch 2/3: 100%|█████████████████████████████████████████████████████████████████████████████████| 46/46 [01:19<00:00,  1.73s/it]
+[random_b10_s42] epoch 3/3: 100%|█████████████████████████████████████████████████████████████████████████████████| 46/46 [01:18<00:00,  1.71s/it]
+[11:17:57] INFO train: saved outputs/checkpoints/random_b10_s42.pt
+[11:18:02] INFO eval: loaded outputs/checkpoints/random_b10_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:26<00:00,  2.16s/it]
+[11:19:28] INFO eval: [random_b10_s42] {'t2i_R@1': 83.84, 't2i_R@5': 97.18, 't2i_R@10': 98.92, 'i2t_R@1': 85.46000000000001, 'i2t_R@5': 97.76, 'i2t_R@10': 99.18, 'mean_R@1': 84.65, 'n_pairs': 5000}
+[11:19:28] INFO run_sweep: [random_b10_s42] mean_R@1 = 84.65
+[11:19:28] INFO select: [v0-farthest] selected 4500 (target 4500)
+[11:19:32] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[11:19:32] INFO train: [v0_b10_s42] training set: 4500 samples
+[v0_b10_s42] epoch 1/3: 100%|█████████████████████████████████████████████████████████████████████████████████████| 46/46 [01:16<00:00,  1.67s/it]
+[v0_b10_s42] epoch 2/3: 100%|█████████████████████████████████████████████████████████████████████████████████████| 46/46 [01:23<00:00,  1.82s/it]
+[v0_b10_s42] epoch 3/3: 100%|█████████████████████████████████████████████████████████████████████████████████████| 46/46 [01:17<00:00,  1.68s/it]
+[11:23:32] INFO train: saved outputs/checkpoints/v0_b10_s42.pt
+[11:23:36] INFO eval: loaded outputs/checkpoints/v0_b10_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:39<00:00,  2.48s/it]
+[11:25:16] INFO eval: [v0_b10_s42] {'t2i_R@1': 80.0, 't2i_R@5': 96.06, 't2i_R@10': 98.22, 'i2t_R@1': 81.62, 'i2t_R@5': 96.14, 'i2t_R@10': 98.48, 'mean_R@1': 80.81, 'n_pairs': 5000}
+[11:25:16] INFO run_sweep: [v0_b10_s42] mean_R@1 = 80.81
+[11:25:16] INFO select: [v0-proto] selected 4500 (target 4500)
+[11:25:20] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[11:25:20] INFO train: [v0_proto_b10_s42] training set: 4500 samples
+[v0_proto_b10_s42] epoch 1/3: 100%|███████████████████████████████████████████████████████████████████████████████| 46/46 [01:14<00:00,  1.62s/it]
+[v0_proto_b10_s42] epoch 2/3: 100%|███████████████████████████████████████████████████████████████████████████████| 46/46 [01:16<00:00,  1.67s/it]
+[v0_proto_b10_s42] epoch 3/3: 100%|███████████████████████████████████████████████████████████████████████████████| 46/46 [01:14<00:00,  1.62s/it]
+[11:29:08] INFO train: saved outputs/checkpoints/v0_proto_b10_s42.pt
+[11:29:13] INFO eval: loaded outputs/checkpoints/v0_proto_b10_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:28<00:00,  2.20s/it]
+[11:30:41] INFO eval: [v0_proto_b10_s42] {'t2i_R@1': 86.24000000000001, 't2i_R@5': 97.78, 't2i_R@10': 99.0, 'i2t_R@1': 87.92, 'i2t_R@5': 98.61999999999999, 'i2t_R@10': 99.5, 'mean_R@1': 87.08000000000001, 'n_pairs': 5000}
+[11:30:41] INFO run_sweep: [v0_proto_b10_s42] mean_R@1 = 87.08
+[11:30:49] INFO select: [v1] selected 4500 (target 4500)
+[11:30:54] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[11:30:54] INFO train: [v1_b10_s42] training set: 4500 samples
+[v1_b10_s42] epoch 1/3: 100%|█████████████████████████████████████████████████████████████████████████████████████| 46/46 [01:16<00:00,  1.66s/it]
+[v1_b10_s42] epoch 2/3: 100%|█████████████████████████████████████████████████████████████████████████████████████| 46/46 [01:23<00:00,  1.82s/it]
+[v1_b10_s42] epoch 3/3: 100%|█████████████████████████████████████████████████████████████████████████████████████| 46/46 [01:17<00:00,  1.69s/it]
+[11:34:54] INFO train: saved outputs/checkpoints/v1_b10_s42.pt
+[11:34:58] INFO eval: loaded outputs/checkpoints/v1_b10_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:25<00:00,  2.15s/it]
+[11:36:25] INFO eval: [v1_b10_s42] {'t2i_R@1': 84.96000000000001, 't2i_R@5': 97.22, 't2i_R@10': 98.86, 'i2t_R@1': 86.08, 'i2t_R@5': 98.1, 'i2t_R@10': 99.32, 'mean_R@1': 85.52000000000001, 'n_pairs': 5000}
+[11:36:25] INFO run_sweep: [v1_b10_s42] mean_R@1 = 85.52
+[11:36:29] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[11:36:29] INFO train: [random_b20_s42] training set: 9000 samples
+[random_b20_s42] epoch 1/3: 100%|███████████████████████████████████████████████████████| 93/93 [02:35<00:00,  1.68s/it, loss=0.0972, lr=5.00e-06]
+[random_b20_s42] epoch 2/3: 100%|███████████████████████████████████████████████████████| 93/93 [02:35<00:00,  1.68s/it, loss=0.0173, lr=8.70e-06]
+[random_b20_s42] epoch 3/3: 100%|███████████████████████████████████████████████████████| 93/93 [02:46<00:00,  1.80s/it, loss=0.0150, lr=1.42e-06]
+[11:44:30] INFO train: saved outputs/checkpoints/random_b20_s42.pt
+[11:44:35] INFO eval: loaded outputs/checkpoints/random_b20_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:44<00:00,  2.62s/it]
+[11:46:21] INFO eval: [random_b20_s42] {'t2i_R@1': 88.26, 't2i_R@5': 98.3, 't2i_R@10': 99.4, 'i2t_R@1': 89.60000000000001, 'i2t_R@5': 98.72, 'i2t_R@10': 99.62, 'mean_R@1': 88.93, 'n_pairs': 5000}
+[11:46:21] INFO run_sweep: [random_b20_s42] mean_R@1 = 88.93
+[11:46:21] INFO select: [v0-farthest] selected 9000 (target 9000)
+[11:46:25] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[11:46:25] INFO train: [v0_b20_s42] training set: 9000 samples
+[v0_b20_s42] epoch 1/3: 100%|███████████████████████████████████████████████████████████| 93/93 [02:35<00:00,  1.67s/it, loss=0.0575, lr=5.00e-06]
+[v0_b20_s42] epoch 2/3: 100%|███████████████████████████████████████████████████████████| 93/93 [02:46<00:00,  1.79s/it, loss=0.0122, lr=8.70e-06]
+[v0_b20_s42] epoch 3/3: 100%|███████████████████████████████████████████████████████████| 93/93 [02:47<00:00,  1.80s/it, loss=0.0059, lr=1.42e-06]
+[11:54:36] INFO train: saved outputs/checkpoints/v0_b20_s42.pt
+[11:54:41] INFO eval: loaded outputs/checkpoints/v0_b20_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:38<00:00,  2.47s/it]
+[11:56:20] INFO eval: [v0_b20_s42] {'t2i_R@1': 86.46000000000001, 't2i_R@5': 98.08, 't2i_R@10': 99.2, 'i2t_R@1': 86.53999999999999, 'i2t_R@5': 98.56, 'i2t_R@10': 99.38, 'mean_R@1': 86.5, 'n_pairs': 5000}
+[11:56:20] INFO run_sweep: [v0_b20_s42] mean_R@1 = 86.50
+[11:56:20] INFO select: [v0-proto] selected 9000 (target 9000)
+[11:56:24] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[11:56:24] INFO train: [v0_proto_b20_s42] training set: 9000 samples
+[v0_proto_b20_s42] epoch 1/3: 100%|█████████████████████████████████████████████████████| 93/93 [02:35<00:00,  1.67s/it, loss=0.1790, lr=5.00e-06]
+[v0_proto_b20_s42] epoch 2/3: 100%|█████████████████████████████████████████████████████| 93/93 [02:28<00:00,  1.60s/it, loss=0.0405, lr=8.70e-06]
+[v0_proto_b20_s42] epoch 3/3: 100%|█████████████████████████████████████████████████████| 93/93 [02:27<00:00,  1.59s/it, loss=0.0219, lr=1.42e-06]
+[12:03:57] INFO train: saved outputs/checkpoints/v0_proto_b20_s42.pt
+[12:04:02] INFO eval: loaded outputs/checkpoints/v0_proto_b20_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:23<00:00,  2.08s/it]
+[12:05:26] INFO eval: [v0_proto_b20_s42] {'t2i_R@1': 89.24, 't2i_R@5': 98.88, 't2i_R@10': 99.72, 'i2t_R@1': 90.44, 'i2t_R@5': 99.18, 'i2t_R@10': 99.74, 'mean_R@1': 89.84, 'n_pairs': 5000}
+[12:05:26] INFO run_sweep: [v0_proto_b20_s42] mean_R@1 = 89.84
+[12:05:35] INFO select: [v1] selected 9000 (target 9000)
+[12:05:39] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[12:05:39] INFO train: [v1_b20_s42] training set: 9000 samples
+[v1_b20_s42] epoch 1/3: 100%|███████████████████████████████████████████████████████████| 93/93 [02:27<00:00,  1.59s/it, loss=0.0968, lr=5.00e-06]
+[v1_b20_s42] epoch 2/3: 100%|███████████████████████████████████████████████████████████| 93/93 [02:27<00:00,  1.59s/it, loss=0.0175, lr=8.70e-06]
+[v1_b20_s42] epoch 3/3: 100%|███████████████████████████████████████████████████████████| 93/93 [02:29<00:00,  1.60s/it, loss=0.0099, lr=1.42e-06]
+[12:13:06] INFO train: saved outputs/checkpoints/v1_b20_s42.pt
+[12:13:10] INFO eval: loaded outputs/checkpoints/v1_b20_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:25<00:00,  2.14s/it]
+[12:14:36] INFO eval: [v1_b20_s42] {'t2i_R@1': 87.7, 't2i_R@5': 98.22, 't2i_R@10': 99.42, 'i2t_R@1': 88.38000000000001, 'i2t_R@5': 98.6, 'i2t_R@10': 99.52, 'mean_R@1': 88.04, 'n_pairs': 5000}
+[12:14:36] INFO run_sweep: [v1_b20_s42] mean_R@1 = 88.04
+[12:14:40] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[12:14:40] INFO train: [random_b40_s42] training set: 18000 samples
+[random_b40_s42] epoch 1/3: 100%|█████████████████████████████████████████████████████| 187/187 [05:09<00:00,  1.66s/it, loss=0.0539, lr=9.72e-06]
+[random_b40_s42] epoch 2/3: 100%|█████████████████████████████████████████████████████| 187/187 [04:57<00:00,  1.59s/it, loss=0.0125, lr=4.81e-06]
+[random_b40_s42] epoch 3/3: 100%|█████████████████████████████████████████████████████| 187/187 [04:56<00:00,  1.58s/it, loss=0.0073, lr=1.67e-07]
+[12:29:46] INFO train: saved outputs/checkpoints/random_b40_s42.pt
+[12:29:51] INFO eval: loaded outputs/checkpoints/random_b40_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:23<00:00,  2.09s/it]
+[12:31:15] INFO eval: [random_b40_s42] {'t2i_R@1': 90.88000000000001, 't2i_R@5': 99.1, 't2i_R@10': 99.66000000000001, 'i2t_R@1': 90.86, 'i2t_R@5': 99.18, 'i2t_R@10': 99.76, 'mean_R@1': 90.87, 'n_pairs': 5000}
+[12:31:15] INFO run_sweep: [random_b40_s42] mean_R@1 = 90.87
+[12:31:15] INFO select: [v0-farthest] selected 18000 (target 18000)
+[12:31:19] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[12:31:19] INFO train: [v0_b40_s42] training set: 18000 samples
+[v0_b40_s42] epoch 1/3: 100%|█████████████████████████████████████████████████████████| 187/187 [05:06<00:00,  1.64s/it, loss=0.0361, lr=9.72e-06]
+[v0_b40_s42] epoch 2/3: 100%|█████████████████████████████████████████████████████████| 187/187 [05:38<00:00,  1.81s/it, loss=0.0067, lr=4.81e-06]
+[v0_b40_s42] epoch 3/3: 100%|█████████████████████████████████████████████████████████| 187/187 [05:58<00:00,  1.92s/it, loss=0.0053, lr=1.67e-07]
+[12:48:05] INFO train: saved outputs/checkpoints/v0_b40_s42.pt
+[12:48:10] INFO eval: loaded outputs/checkpoints/v0_b40_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:31<00:00,  2.29s/it]
+[12:49:43] INFO eval: [v0_b40_s42] {'t2i_R@1': 89.9, 't2i_R@5': 98.98, 't2i_R@10': 99.58, 'i2t_R@1': 90.60000000000001, 'i2t_R@5': 98.92, 'i2t_R@10': 99.58, 'mean_R@1': 90.25, 'n_pairs': 5000}
+[12:49:43] INFO run_sweep: [v0_b40_s42] mean_R@1 = 90.25
+[12:49:43] INFO select: [v0-proto] selected 18000 (target 18000)
+[12:49:47] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[12:49:47] INFO train: [v0_proto_b40_s42] training set: 18000 samples
+[v0_proto_b40_s42] epoch 1/3: 100%|███████████████████████████████████████████████████| 187/187 [05:48<00:00,  1.87s/it, loss=0.0839, lr=9.72e-06]
+[v0_proto_b40_s42] epoch 2/3: 100%|███████████████████████████████████████████████████| 187/187 [05:49<00:00,  1.87s/it, loss=0.0198, lr=4.81e-06]
+[v0_proto_b40_s42] epoch 3/3: 100%|███████████████████████████████████████████████████| 187/187 [05:40<00:00,  1.82s/it, loss=0.0116, lr=1.67e-07]
+[13:07:08] INFO train: saved outputs/checkpoints/v0_proto_b40_s42.pt
+[13:07:12] INFO eval: loaded outputs/checkpoints/v0_proto_b40_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:29<00:00,  2.23s/it]
+[13:08:42] INFO eval: [v0_proto_b40_s42] {'t2i_R@1': 91.84, 't2i_R@5': 99.11999999999999, 't2i_R@10': 99.72, 'i2t_R@1': 92.14, 'i2t_R@5': 99.16, 'i2t_R@10': 99.76, 'mean_R@1': 91.99000000000001, 'n_pairs': 5000}
+[13:08:42] INFO run_sweep: [v0_proto_b40_s42] mean_R@1 = 91.99
+[13:08:57] INFO select: [v1] selected 18000 (target 18000)
+[13:09:01] INFO train: Trainable params: 41,618,945 / 149,620,737 (27.82%)
+[13:09:01] INFO train: [v1_b40_s42] training set: 18000 samples
+[v1_b40_s42] epoch 1/3: 100%|█████████████████████████████████████████████████████████| 187/187 [05:45<00:00,  1.85s/it, loss=0.0504, lr=9.72e-06]
+[v1_b40_s42] epoch 2/3: 100%|█████████████████████████████████████████████████████████| 187/187 [05:50<00:00,  1.87s/it, loss=0.0111, lr=4.81e-06]
+[v1_b40_s42] epoch 3/3: 100%|█████████████████████████████████████████████████████████| 187/187 [05:59<00:00,  1.92s/it, loss=0.0061, lr=1.67e-07]
+[13:26:38] INFO train: saved outputs/checkpoints/v1_b40_s42.pt
+[13:26:43] INFO eval: loaded outputs/checkpoints/v1_b40_s42.pt  missing=0  unexpected=0
+encode val: 100%|█████████████████████████████████████████████████████████████████████████████████████████████████| 40/40 [01:33<00:00,  2.34s/it]
+[13:28:17] INFO eval: [v1_b40_s42] {'t2i_R@1': 90.24, 't2i_R@5': 99.1, 't2i_R@10': 99.7, 'i2t_R@1': 90.88000000000001, 'i2t_R@5': 99.08, 'i2t_R@10': 99.74, 'mean_R@1': 90.56, 'n_pairs': 5000}
+[13:28:18] INFO run_sweep: [v1_b40_s42] mean_R@1 = 90.56
+
+=== Coreset sweep (mean_R@1, val image-text retrieval) ===
+zeroshot = 59.03
+
+ budget |         random |             v0 |       v0_proto |             v1
+---------------------------------------------------------------------------
+    5% |     79.94±0.00 |     75.23±0.00 |     82.05±0.00 |     80.65±0.00
+   10% |     84.65±0.00 |     80.81±0.00 |     87.08±0.00 |     85.52±0.00
+   20% |     88.93±0.00 |     86.50±0.00 |     89.84±0.00 |     88.04±0.00
+   40% |     90.87±0.00 |     90.25±0.00 |     91.99±0.00 |     90.56±0.00
