@@ -55,18 +55,20 @@ def _i2t_t2i_recall(sims: np.ndarray, k_values=(1, 5, 10)) -> dict:
     n = sims.shape[0]
     out: dict[str, float] = {}
 
-    # text -> image: for each row i, rank columns by descending sim, check if
-    # column i appears in top-k
-    t2i_ranks_desc = np.argsort(-sims, axis=1)
-    correct_pos_t2i = np.argmax(t2i_ranks_desc == np.arange(n)[:, None], axis=1)
-    for k in k_values:
-        out[f"t2i_R@{k}"] = float((correct_pos_t2i < k).mean() * 100.0)
+    # 0-indexed rank of the correct match = number of distractors scoring
+    # strictly higher than the diagonal. O(N^2) without a full argsort, so it
+    # scales fine to a 5K+ gallery. Ties are negligible for continuous cosine.
+    diag = np.diag(sims)
 
-    # image -> text: argsort along rows of sims.T
-    i2t_ranks_desc = np.argsort(-sims.T, axis=1)
-    correct_pos_i2t = np.argmax(i2t_ranks_desc == np.arange(n)[:, None], axis=1)
+    # text -> image: row i, correct column is i
+    t2i_rank = (sims > diag[:, None]).sum(axis=1)
     for k in k_values:
-        out[f"i2t_R@{k}"] = float((correct_pos_i2t < k).mean() * 100.0)
+        out[f"t2i_R@{k}"] = float((t2i_rank < k).mean() * 100.0)
+
+    # image -> text: column i correct → compare down each column
+    i2t_rank = (sims > diag[None, :]).sum(axis=0)
+    for k in k_values:
+        out[f"i2t_R@{k}"] = float((i2t_rank < k).mean() * 100.0)
 
     out["mean_R@1"] = 0.5 * (out["t2i_R@1"] + out["i2t_R@1"])
     out["n_pairs"] = int(n)

@@ -10,13 +10,13 @@ V0 = **clean baseline, hoàn toàn độc lập với V1/V2 prep work**.
 Download N shards từ HF (TruongVox/Cawot-dataset)
   → Random sample M (image, caption) entries
   → Extract CLIP ViT-B/16 image embeddings
-  → Hold out V (image, caption) pairs cho val
-  → FAISS k-means (K, spherical) trên (M − V) train pool
-  → 2 coresets cùng budget 20%:
-        Random (baseline)
-        V0 (farthest-from-centroid trong mỗi cluster)
-  → Fine-tune CLIP-B/16 (last 4 layers + InfoNCE) trên mỗi coreset
-  → Image-text retrieval R@1/5/10 trên val
+  → Hold out V=5000 (image, caption) pairs làm FIXED retrieval val set
+  → Budget sweep {5, 10, 20, 40}%, mỗi budget:
+        FAISS k-means (K, spherical) trên (M − V) train pool
+        2 coresets: Random (baseline) vs V0 (farthest-from-centroid)
+        Fine-tune CLIP-B/16 (last 4 layers + InfoNCE) trên mỗi coreset
+        Image-text retrieval R@1/5/10 trên val
+  → Đường cong R@1 vs budget (V0 vs Random vs zero-shot)
 ```
 
 **V0 KHÔNG có** (đó là V1/V2):
@@ -113,9 +113,11 @@ pab_data/
 `config.yaml`:
 - `data.image_root` / `data.annotations_dir` — trỏ vào output của setup_data.py
 - `data.sample_size: 50000` — random sample size từ pool đã download
-- `data.val_size: 2000` — held-out pairs cho R@k eval
+- `data.val_size: 5000` — held-out pairs làm retrieval gallery (lớn hơn 2K cũ để hết bão hòa)
 - `cluster.k: 150` — rule of thumb √(N/2)
-- `coreset.budget_ratio: 0.20` — coreset size = 20% train pool sau val split
+- `coreset.budgets: [0.05, 0.10, 0.20, 0.40]` — budget sweep (theo scaling-law plan)
+- `train.seeds: [42]` — bắt đầu 1 seed; đổi `[42, 1, 2]` để có error bar
+- `train.keep_checkpoints: false` — xóa checkpoint sau eval để tiết kiệm disk
 - `train.num_epochs: 3` — đủ cho V0 sanity
 - `train.batch_size: 96` — fit Kaggle P100 16GB với amp
 
@@ -154,7 +156,7 @@ PAB Track 4 test set có person ID **bị mask cố ý** (competition track) →
 - Compute cosine sim matrix → rank
 - 6 numbers: `t2i_R@{1,5,10}`, `i2t_R@{1,5,10}`, plus `mean_R@1`
 
-Đây là eval chuẩn trong CLIP/BLIP papers cho cross-modal alignment.
+Đây là eval chuẩn trong CLIP/BLIP papers cho cross-modal alignment. Gallery 5000 (thay vì 2000) để tránh bão hòa — với 2000 cả Random và V0 đều ~94% R@1, không phân biệt được method.
 
 Real test set: sau khi V0 confirmed work, generate predictions trên `name-masked_test_set/gallery.zip` và submit lên ECCV leaderboard.
 

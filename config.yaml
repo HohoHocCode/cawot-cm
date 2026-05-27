@@ -12,8 +12,12 @@ data:
   # whose shard is on disk. 50K is a good Kaggle P100 default (~20 min embed).
   sample_size: 50000
 
-  # Held-out (image, caption) val pairs for image-text retrieval R@k.
-  val_size: 2000
+  # Held-out (image, caption) pairs used as the retrieval val set.
+  # Bigger gallery = harder retrieval = less saturation. 5000 queries ranked
+  # against 5000 gallery images gives real headroom (vs. 2000 which saturated
+  # at ~94% R@1). This val set is FIXED across all budgets/seeds so numbers
+  # are directly comparable.
+  val_size: 5000
 
   image_size: 224
   num_workers: 2
@@ -37,7 +41,11 @@ cluster:
   output_path: "/kaggle/working/outputs/clusters.npz"
 
 coreset:
-  budget_ratio: 0.20
+  # Budget sweep (fraction of train pool). Matches the plan's scaling-law
+  # points (Part B2: 5/10/20/30/40/50%). We use 4 affordable points; the
+  # 20% headline plus low/high anchors. V0's value should show most at low
+  # budget and converge to Random at high budget.
+  budgets: [0.05, 0.10, 0.20, 0.40]
   output_dir: "/kaggle/working/outputs"
 
 train:
@@ -56,6 +64,12 @@ train:
   amp: true
   output_dir: "/kaggle/working/outputs/checkpoints"
   log_every: 50
+  # Seeds for the sweep. Start with 1 seed to confirm the eval de-saturates,
+  # then bump to [42, 1, 2] for error bars. Each seed re-clusters + re-selects
+  # random + retrains, so error bars capture selection + training noise.
+  seeds: [42]
+  # Delete each checkpoint right after eval to save Kaggle disk (8-24 runs).
+  keep_checkpoints: false
 
 eval:
   batch_size: 128

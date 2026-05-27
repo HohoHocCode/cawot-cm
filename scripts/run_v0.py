@@ -1,23 +1,30 @@
-"""End-to-end V0 — independent of friend's qproxy work.
+"""End-to-end V0 — budget sweep over the friend-independent train pool.
 
-Pipeline (matches the plan: V0 = diversity-only baseline):
+Pipeline (V0 = diversity-only baseline):
 
-  1. Load PAB JSONL annotations, discover image shards on disk, build a
-     random sample of N (= cfg.data.sample_size) (image, caption) entries.
-  2. Extract CLIP-B/16 image embeddings (cached to disk).
-  3. Hold out V (= cfg.data.val_size) pairs for image-text retrieval R@k.
-  4. FAISS k-means (spherical) over the remaining train pool.
-  5. Two coresets at the same budget:
-       - random       (baseline)
-       - v0           (farthest-from-centroid within each cluster)
-  6. Fine-tune CLIP-B/16 on each coreset.
-  7. Evaluate each + zero-shot anchor on the val split.
+  Fixed setup (done once):
+    1. Load PAB JSONL annotations + discover image shards, random-sample N.
+    2. Extract CLIP-B/16 image embeddings (cached).
+    3. Hold out V pairs as a FIXED retrieval val set (same gallery for every
+       run → numbers directly comparable).
+    4. Zero-shot eval (anchor).
+
+  Sweep (for each seed, for each budget):
+    5. Cluster the train pool (FAISS spherical, this seed).
+    6. Two coresets at this budget: Random vs V0 (farthest-from-centroid).
+    7. Fine-tune CLIP-B/16 on each → eval on the val set.
+
+  Aggregate:
+    - summary.json : per (method, budget) mean ± std over seeds.
+    - records.csv  : one row per (method, budget, seed) for plotting.
 
 Usage:
   python scripts/run_v0.py --config config.yaml
 """
 import argparse
+import csv
 import json
+import statistics
 import sys
 from pathlib import Path
 
@@ -25,7 +32,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.cluster import kmeans_faiss, load_clusters, save_clusters
+from src.cluster import kmeans_faiss
 from src.data import TrainPoolDataset, build_pool, make_train_val_split
 from src.embed import extract_image_embeddings, load_clip
 from src.eval import evaluate_val_split
@@ -42,39 +49,37 @@ def main():
     args = ap.parse_args()
 
     cfg = load_config(args.config)
-    set_seed(cfg["seed"])
+    base_seed = cfg["seed"]
+    set_seed(base_seed)
     device = get_device("cuda")
 
-    # === Step 1: build train pool (anns + shard map, no images loaded yet) ===
-    logger.info(f"building pool from annotations_dir={cfg['data']['annotations_dir']}, "
-                f"image_root={cfg['data']['image_root']}")
+    budgets = cfg["coreset"]["budgets"]
+    seeds = cfg["train"]["seeds"]
+    keep_ckpts = cfg["train"].get("keep_checkpoints", False)
+    logger.info(f"budgets={budgets}  seeds={seeds}")
+
+    # === Fixed setup ===
     anns, shard_roots = build_pool(
         annotations_dir=cfg["data"]["annotations_dir"],
         image_root=cfg["data"]["image_root"],
         sample_size=cfg["data"]["sample_size"],
-        seed=cfg["seed"],
+        seed=base_seed,
     )
     N = len(anns)
-    logger.info(f"pool: {N} samples, shards on disk: {sorted(shard_roots)}")
+    logger.info(f"pool: {N} samples, shards: {sorted(shard_roots)}")
 
-    # === Step 2: extract embeddings (cached) ===
     model, preprocess, tokenizer = load_clip(
         cfg["embed"]["model"], cfg["embed"]["pretrained"], device
     )
+
+    # Embeddings (cached)
     emb_dir = ensure_dir(cfg["embed"]["output_dir"])
     emb_path = Path(emb_dir) / "image_embeddings.npy"
-
-    if emb_path.exists():
+    if emb_path.exists() and np.load(emb_path, mmap_mode="r").shape[0] == N:
         embeddings = np.load(emb_path)
-        if embeddings.shape[0] != N:
-            logger.warning(f"cached embeddings have {embeddings.shape[0]} rows but pool is {N}; "
-                           f"re-extracting")
-            emb_path.unlink()
-
-    if not emb_path.exists():
-        embed_ds = TrainPoolDataset(
-            anns=anns, shard_roots=shard_roots, image_transform=preprocess, tokenizer=None
-        )
+        logger.info(f"using cached embeddings {embeddings.shape}")
+    else:
+        embed_ds = TrainPoolDataset(anns, shard_roots, image_transform=preprocess, tokenizer=None)
         embeddings = extract_image_embeddings(
             embed_ds, model, device,
             batch_size=cfg["embed"]["batch_size"],
@@ -82,78 +87,103 @@ def main():
             amp=cfg["train"]["amp"],
         )
         np.save(emb_path, embeddings)
-        logger.info(f"saved embeddings to {emb_path}  shape={embeddings.shape}")
-    else:
-        logger.info(f"using cached embeddings at {emb_path}  shape={embeddings.shape}")
+        logger.info(f"saved embeddings {embeddings.shape}")
 
-    # Free the embedding-extraction model — we'll reload per-run for finetune
     del model
     import torch
     torch.cuda.empty_cache()
 
-    # === Step 3: train/val split ===
-    train_idx, val_idx = make_train_val_split(N, cfg["data"]["val_size"], seed=cfg["seed"])
+    # FIXED train/val split — same val gallery for every run
+    train_idx, val_idx = make_train_val_split(N, cfg["data"]["val_size"], seed=base_seed)
     train_emb = embeddings[train_idx]
-    logger.info(f"split: {len(train_idx)} train pool / {len(val_idx)} val")
+    logger.info(f"split: {len(train_idx)} train pool / {len(val_idx)} val (FIXED)")
 
-    # === Step 4: cluster ===
-    cluster_path = Path(cfg["cluster"]["output_path"])
-    if cluster_path.exists():
-        centroids, assignments = load_clusters(cluster_path)
-        logger.info(f"using cached clusters at {cluster_path}")
-    else:
+    val_dataset = TrainPoolDataset(
+        anns, shard_roots, image_transform=preprocess, tokenizer=tokenizer, indices=val_idx
+    )
+
+    out_dir = ensure_dir(cfg["coreset"]["output_dir"])
+    ckpt_dir = ensure_dir(cfg["train"]["output_dir"])
+
+    # === Zero-shot anchor (once) ===
+    zs = evaluate_val_split(cfg, val_dataset, None, "zeroshot")
+    logger.info(f"zeroshot mean_R@1 = {zs['mean_R@1']:.2f}")
+
+    # === Sweep ===
+    records: list[dict] = []
+    for seed in seeds:
+        set_seed(seed)
         centroids, assignments = kmeans_faiss(
             train_emb,
             k=cfg["cluster"]["k"],
             niter=cfg["cluster"]["niter"],
             spherical=cfg["cluster"]["spherical"],
             use_gpu=cfg["cluster"]["use_gpu"],
-            seed=cfg["seed"],
+            seed=seed,
         )
-        save_clusters(cluster_path, centroids, assignments)
+        for budget in budgets:
+            b = int(round(budget * len(train_idx)))
+            coresets = {
+                "random": select_random(len(train_idx), b, seed=seed),
+                "v0": select_v0(train_emb, centroids, assignments, b, seed=seed),
+            }
+            for method, local_idx in coresets.items():
+                pool_idx = train_idx[local_idx]
+                train_ds = TrainPoolDataset(
+                    anns, shard_roots, image_transform=preprocess,
+                    tokenizer=tokenizer, indices=pool_idx,
+                )
+                run_name = f"{method}_b{int(budget * 100)}_s{seed}"
+                ckpt = train_on_dataset(cfg, train_ds, run_name)
+                m = evaluate_val_split(cfg, val_dataset, ckpt, run_name)
+                records.append({
+                    "method": method, "budget": budget, "seed": seed,
+                    "mean_R@1": m["mean_R@1"],
+                    "t2i_R@1": m["t2i_R@1"], "i2t_R@1": m["i2t_R@1"],
+                    "t2i_R@5": m["t2i_R@5"], "i2t_R@5": m["i2t_R@5"],
+                })
+                if not keep_ckpts:
+                    Path(ckpt).unlink(missing_ok=True)
+                logger.info(f"[{run_name}] mean_R@1 = {m['mean_R@1']:.2f}")
 
-    # === Step 5: select coresets ===
-    budget = int(round(cfg["coreset"]["budget_ratio"] * len(train_idx)))
-    logger.info(f"coreset budget: {budget} samples ({cfg['coreset']['budget_ratio']:.0%})")
+    # === Aggregate ===
+    eval_dir = ensure_dir(cfg["eval"]["output_dir"])
 
-    rand_local = select_random(len(train_idx), budget, seed=cfg["seed"])
-    v0_local = select_v0(train_emb, centroids, assignments, budget, seed=cfg["seed"])
+    csv_path = Path(eval_dir) / "records.csv"
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(records[0].keys()))
+        w.writeheader()
+        w.writerows(records)
 
-    out_dir = ensure_dir(cfg["coreset"]["output_dir"])
-    np.save(Path(out_dir) / "coreset_random.npy", rand_local)
-    np.save(Path(out_dir) / "coreset_v0.npy", v0_local)
+    summary: dict = {"zeroshot": {"mean_R@1": zs["mean_R@1"]}}
+    for method in ("random", "v0"):
+        summary[method] = {}
+        for budget in budgets:
+            vals = [r["mean_R@1"] for r in records
+                    if r["method"] == method and r["budget"] == budget]
+            summary[method][f"{budget}"] = {
+                "mean_R@1_mean": round(statistics.mean(vals), 3),
+                "mean_R@1_std": round(statistics.stdev(vals), 3) if len(vals) > 1 else 0.0,
+                "n_seeds": len(vals),
+            }
 
-    # === Step 6 + 7: train and eval each ===
-    results: dict = {}
-
-    val_dataset = TrainPoolDataset(
-        anns=anns, shard_roots=shard_roots,
-        image_transform=preprocess, tokenizer=tokenizer,
-        indices=val_idx,
-    )
-
-    # Zero-shot anchor (no fine-tune)
-    results["zeroshot"] = evaluate_val_split(cfg, val_dataset, None, "zeroshot")
-
-    for name, local_indices in [("random", rand_local), ("v0", v0_local)]:
-        # local_indices are positions into train_idx; convert to pool positions
-        pool_indices = train_idx[local_indices]
-        train_dataset = TrainPoolDataset(
-            anns=anns, shard_roots=shard_roots,
-            image_transform=preprocess, tokenizer=tokenizer,
-            indices=pool_indices,
-        )
-        ckpt = train_on_dataset(cfg, train_dataset, name)
-        results[name] = evaluate_val_split(cfg, val_dataset, ckpt, name)
-
-    summary_path = Path(cfg["eval"]["output_dir"]) / "summary.json"
-    ensure_dir(summary_path.parent)
+    summary_path = Path(eval_dir) / "summary.json"
     with open(summary_path, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2)
+        json.dump(summary, f, indent=2)
 
-    print("\n=== Summary ===")
-    print(json.dumps(results, indent=2))
-    print(f"\nSaved to {summary_path}")
+    # Console table
+    print("\n=== V0 budget sweep ===")
+    print(f"zeroshot mean_R@1 = {zs['mean_R@1']:.2f}\n")
+    print(f"{'budget':>8} | {'random':>16} | {'v0':>16} | {'Δ(v0-rand)':>10}")
+    print("-" * 60)
+    for budget in budgets:
+        r = summary["random"][f"{budget}"]
+        v = summary["v0"][f"{budget}"]
+        delta = v["mean_R@1_mean"] - r["mean_R@1_mean"]
+        rstr = f"{r['mean_R@1_mean']:.2f}±{r['mean_R@1_std']:.2f}"
+        vstr = f"{v['mean_R@1_mean']:.2f}±{v['mean_R@1_std']:.2f}"
+        print(f"{budget:>8.0%} | {rstr:>16} | {vstr:>16} | {delta:>+10.2f}")
+    print(f"\nSaved: {summary_path}\n        {csv_path}")
 
 
 if __name__ == "__main__":
