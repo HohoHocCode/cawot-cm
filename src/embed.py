@@ -65,6 +65,41 @@ def extract_image_embeddings(
     return np.concatenate(feats, axis=0).astype(np.float32)
 
 
+@torch.no_grad()
+def extract_image_text_embeddings(
+    dataset,
+    model,
+    device: torch.device,
+    batch_size: int = 128,
+    num_workers: int = 2,
+    amp: bool = True,
+) -> tuple[np.ndarray, np.ndarray]:
+    """One pass over the dataset, encoding BOTH image and text. L2-normalized.
+
+    Loads each image once and encodes its caption too — used by V1 which needs
+    text embeddings for the cross-modal cost. `dataset` must yield
+    {"image": tensor, "text_tokens": LongTensor}.
+
+    Returns (image_embeddings, text_embeddings), each (N, D) float32.
+    """
+    loader = DataLoader(
+        dataset, batch_size=batch_size, shuffle=False,
+        num_workers=num_workers, pin_memory=True,
+    )
+    img_feats: list[np.ndarray] = []
+    txt_feats: list[np.ndarray] = []
+    for batch in tqdm(loader, desc="extract image+text embeddings"):
+        images = batch["image"].to(device, non_blocking=True)
+        tokens = batch["text_tokens"].to(device, non_blocking=True)
+        with torch.cuda.amp.autocast(enabled=amp and device.type == "cuda"):
+            fi = torch.nn.functional.normalize(model.encode_image(images).float(), dim=-1)
+            ft = torch.nn.functional.normalize(model.encode_text(tokens).float(), dim=-1)
+        img_feats.append(fi.cpu().numpy())
+        txt_feats.append(ft.cpu().numpy())
+    return (np.concatenate(img_feats, 0).astype(np.float32),
+            np.concatenate(txt_feats, 0).astype(np.float32))
+
+
 # -----------------------------------------------------------------------------
 # LEGACY (dummy / JSON path)
 # -----------------------------------------------------------------------------

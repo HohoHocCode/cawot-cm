@@ -42,10 +42,15 @@ cluster:
 
 coreset:
   # Budget sweep (fraction of train pool). Matches the plan's scaling-law
-  # points (Part B2: 5/10/20/30/40/50%). We use 4 affordable points; the
-  # 20% headline plus low/high anchors. V0's value should show most at low
-  # budget and converge to Random at high budget.
+  # points (Part B2: 5/10/20/30/40/50%). 4 affordable points: 20% headline
+  # plus low/high anchors. Selection effect is largest at low budget.
   budgets: [0.05, 0.10, 0.20, 0.40]
+  # Methods compared in one sweep:
+  #   random   - uniform baseline
+  #   v0       - farthest-from-centroid (diversity / atypical) [plan V0]
+  #   v0_proto - closest-to-centroid (prototype / representative) [diagnostic]
+  #   v1       - cross-modal cost + facility location [plan V1, the method]
+  methods: [random, v0, v0_proto, v1]
   output_dir: "/kaggle/working/outputs"
 
 train:
