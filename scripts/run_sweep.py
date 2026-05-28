@@ -34,7 +34,8 @@ from src.cluster import kmeans_faiss
 from src.data import TrainPoolDataset, build_pool, make_train_val_split
 from src.embed import extract_image_text_embeddings, load_clip
 from src.eval import evaluate_val_split
-from src.select import select_random, select_v0, select_v0_proto, select_v1
+from src.qproxy import load_or_encode_qproxy
+from src.select import select_random, select_v0, select_v0_proto, select_v1, select_v2
 from src.train import train_on_dataset
 from src.utils import ensure_dir, get_device, load_config, set_seed, setup_logger
 
@@ -46,7 +47,8 @@ RECORD_FIELDS = [
 ]
 
 
-def select_coreset(method, n_train, b, zv, zt, centroids, assignments, seed):
+def select_coreset(method, n_train, b, zv, zt, centroids, assignments, seed,
+                   q_proxy_emb=None, v2_alpha=0.5):
     if method == "random":
         return select_random(n_train, b, seed=seed)
     if method == "v0":
@@ -55,6 +57,10 @@ def select_coreset(method, n_train, b, zv, zt, centroids, assignments, seed):
         return select_v0_proto(zv, centroids, assignments, b, seed=seed)
     if method == "v1":
         return select_v1(zv, zt, centroids, assignments, b, seed=seed)
+    if method == "v2":
+        if q_proxy_emb is None:
+            raise ValueError("V2 needs q_proxy_emb (set qproxy.queries_json_path in config + run setup_qproxy.py)")
+        return select_v2(zv, zt, centroids, assignments, q_proxy_emb, b, alpha=v2_alpha, seed=seed)
     raise ValueError(f"unknown method: {method}")
 
 
@@ -97,8 +103,11 @@ def main():
     methods = cfg["coreset"]["methods"]
     seeds = cfg["train"]["seeds"]
     keep_ckpts = cfg["train"].get("keep_checkpoints", False)
-    needs_text = "v1" in methods
-    logger.info(f"methods={methods}  budgets={budgets}  seeds={seeds}  needs_text={needs_text}")
+    needs_text = ("v1" in methods) or ("v2" in methods)
+    needs_qproxy = "v2" in methods
+    v2_alpha = float(cfg["coreset"].get("v2_alpha", 0.5))
+    logger.info(f"methods={methods}  budgets={budgets}  seeds={seeds}  "
+                f"needs_text={needs_text}  needs_qproxy={needs_qproxy}  v2_alpha={v2_alpha}")
 
     # === Fixed setup ===
     anns, shard_roots = build_pool(
@@ -142,6 +151,22 @@ def main():
         logger.info(f"saved embeddings image{image_emb.shape} text{text_emb.shape}")
         if not needs_text:
             text_emb = None
+
+    # === Q_proxy text embeddings (V2 only) — encode with CLIP-B/16 text encoder ===
+    # We re-encode the queries even if friend has a precomputed EVA02 version,
+    # because pool's text embeddings are CLIP-512d and W2 must be in same space.
+    q_proxy_emb = None
+    if needs_qproxy:
+        q_proxy_emb = load_or_encode_qproxy(
+            json_path=cfg["qproxy"]["queries_json_path"],
+            cache_path=cfg["qproxy"]["cache_path"],
+            model=model,
+            tokenizer=tokenizer,
+            device=device,
+            batch_size=cfg["embed"]["batch_size"],
+            amp=cfg["train"]["amp"],
+        )
+        logger.info(f"Q_proxy embeddings: {q_proxy_emb.shape}")
 
     del model
     import torch
@@ -205,7 +230,8 @@ def main():
                     logger.info(f"[skip] {method} b={budget} s={seed} already done")
                     continue
                 local_idx = select_coreset(
-                    method, n_train, b, train_zv, train_zt, centroids, assignments, seed
+                    method, n_train, b, train_zv, train_zt, centroids, assignments, seed,
+                    q_proxy_emb=q_proxy_emb, v2_alpha=v2_alpha,
                 )
                 pool_idx = train_idx[local_idx]
                 train_ds = TrainPoolDataset(

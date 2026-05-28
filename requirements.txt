@@ -25,3 +25,6 @@ einops>=0.7.0
 
 # Dataset download from Hugging Face
 huggingface_hub>=0.23.0
+
+# Q_proxy folder download from Google Drive (V2)
+gdown>=5.1.0

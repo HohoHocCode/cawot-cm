@@ -48,9 +48,22 @@ coreset:
   #   random   - uniform baseline
   #   v0       - farthest-from-centroid (diversity / atypical) [plan V0]
   #   v0_proto - closest-to-centroid (prototype / representative) [diagnostic]
-  #   v1       - cross-modal cost + facility location [plan V1, the method]
-  methods: [random, v0, v0_proto, v1]
+  #   v1       - cross-modal cost + facility location [plan V1]
+  #   v2       - Wasserstein-aware budget + cross-modal facility location [plan V2]
+  methods: [random, v0, v0_proto, v1, v2]
+  # V2 budget formula:  B_k ∝ n_k^alpha × (1 + W_k / W_avg).
+  # alpha = 0.5 (plan default) — sub-linear scaling vs cluster size.
+  v2_alpha: 0.5
   output_dir: "/kaggle/working/outputs"
+
+# Q_proxy (V2 only): LLM-generated synthetic text queries used as
+# distribution anchor for Wasserstein-aware budget allocation.
+qproxy:
+  # Path to queries.json (the 2,593 LLM queries from friend's qproxy folder).
+  # Use scripts/setup_qproxy.py to download from Drive first.
+  queries_json_path: "/kaggle/working/qproxy/queries.json"
+  # Cache for CLIP-B/16-encoded Q_proxy embeddings (re-encoded from captions).
+  cache_path: "/kaggle/working/outputs/embeddings/qproxy_clip_text_emb.npy"
 
 train:
   # Must match `embed.model` for V0 (we reuse the model for finetune).

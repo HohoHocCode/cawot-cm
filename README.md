@@ -1,4 +1,4 @@
-# CAWOT-CM — Coreset Selection cho Text-based Person Anomaly Retrieval (V0 + V1)
+# CAWOT-CM — Coreset Selection cho Text-based Person Anomaly Retrieval (V0 + V1 + V2)
 
 Codebase cho phần **coreset selection** của paper CAWOT-CM, chạy trên benchmark **PAB ECCV'26 Workshop Track 4** (Pedestrian Anomaly Behavior). Mục tiêu: chọn một tập con (coreset) nhỏ từ pool ảnh-caption synthetic sao cho fine-tune trên coreset đó cho kết quả retrieval tốt nhất với cùng một ngân sách dữ liệu (data budget).
 
@@ -35,7 +35,7 @@ chọn top-B_k theo d_i giảm dần
 ### V0-proto — closest-to-centroid (diagnostic)
 Ngược V0: chọn các sample **gần centroid nhất** = **điểm điển hình/đại diện (prototype)**. Dùng để kiểm chứng giả thuyết Sorscher (xem §6).
 
-### V1 — cross-modal cost + facility location (plan V1, **the method**)
+### V1 — cross-modal cost + facility location (plan V1)
 Trong mỗi cluster, thay vì dựa vào khoảng cách tới centroid, chọn tập **phủ (cover)** cluster trong không gian **đa phương thức (image + text + alignment)** bằng tối ưu submodular **facility location**.
 
 **Cross-modal cost** giữa 2 sample i, j (theo plan):
@@ -54,14 +54,44 @@ f(S) = Σ_i  max_{s ∈ S}  s_{i,s}
 ```
 tức S "đại diện" tốt cho toàn cluster. Giải bằng **greedy** (đảm bảo xấp xỉ `1 − 1/e`). Implement bằng numpy thuần trong [src/select.py](src/select.py) (`facility_location_greedy`) — vì ở quy mô per-cluster (≤ ~1000 điểm) greedy vectorized là đủ nhanh và minh bạch. Khi scale lên full-1M có thể thay bằng submodlib (C++ LazyGreedy) với cùng kernel.
 
-| Component | random | v0 | v0_proto | v1 |
-|---|---|---|---|---|
-| Cluster (image) + proportional budget | ✓ | ✓ | ✓ | ✓ |
-| Dùng text embedding | ✗ | ✗ | ✗ | ✓ |
-| Chọn trong cluster | — (toàn cục) | xa centroid | gần centroid | facility location (cross-modal) |
-| Q_proxy / Wasserstein budget | ✗ | ✗ | ✗ | ✗ (để V2) |
+### V2 — Wasserstein-aware budget + cross-modal facility location (plan V2, **the method**)
+V2 giữ y nguyên cách chọn TRONG cluster của V1, nhưng đổi cách chia ngân sách GIỮA cluster.
 
-**V1 KHÔNG có**: Q_proxy, Wasserstein-aware budget — đó là V2.
+**Q_proxy**: tập 2,593 LLM-generated text queries (từ folder Drive của teammate). Mỗi caption được **re-encode bằng CLIP-B/16 text encoder** để cùng không gian với text embeddings của pool (vì friend's `text_embeddings.npy` đang ở EVA02-1024d, không match).
+
+**Wasserstein gap mỗi cluster**: với cluster k có text embeddings `T_k`, tính khoảng cách Wasserstein-2 tới Q_proxy:
+```
+W_k = W2( T_k , Q_proxy )
+```
+Implement: **Gaussian fit + diagonal covariance** closed-form (xem `gaussian_w2_diag` trong [src/select.py](src/select.py)):
+```
+W2² ≈ ||μ_T − μ_Q||²  +  Σ_d (σ_{T,d} − σ_{Q,d})²
+```
+Lý do dùng diagonal thay vì full covariance:
+- Full Gaussian W2 cần `Σ^{1/2}` (O(d³)); với d=512, K=150 sẽ chậm.
+- Khi cluster size < d (rank-deficient), full Σ không invertible; diagonal ổn.
+- GORACS (KDD'25) + FDMat (AAAI'24) cũng dùng closed-form xấp xỉ tương tự.
+
+**Budget allocation**:
+```
+B_k  ∝  n_k^α  ×  (1 + W_k / W_avg)
+```
+với α = 0.5 (plan default, `coreset.v2_alpha`):
+- `n_k^α` sub-linear: tránh cluster lớn "ăn" hết budget.
+- `(1 + W_k/W_avg)` boost cluster xa Q_proxy: chưa được cover bởi loại query test-like → cần thêm sample.
+
+Largest-remainder rounding, capped at cluster size. Final coreset same selection logic V1 (facility location on cross-modal cost) within each cluster.
+
+### Tóm tắt method matrix
+
+| Component | random | v0 | v0_proto | v1 | **v2** |
+|---|---|---|---|---|---|
+| Cluster (image) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Budget ∝ size | ✓ | ✓ | ✓ | ✓ | ✗ |
+| Budget Wasserstein-aware | ✗ | ✗ | ✗ | ✗ | **✓** |
+| Dùng text embedding | ✗ | ✗ | ✗ | ✓ | ✓ |
+| Q_proxy | ✗ | ✗ | ✗ | ✗ | **✓** |
+| Chọn trong cluster | — (toàn cục) | xa centroid | gần centroid | facility location | facility location |
 
 ---
 
@@ -87,11 +117,11 @@ Cho V0/V1 sanity + sweep: **5 shards (~65K cặp)** là đủ. Full-1M chỉ c�
 1. **Pool**: random-sample `sample_size = 50,000` cặp từ các shard đã tải (seed cố định).
 2. **Embeddings**: trích CLIP ViT-B/16 (OpenAI) image + text embedding (512-d, L2-normalized). Cache lại.
 3. **Val set (FIXED)**: hold-out `val_size = 5,000` cặp làm tập eval retrieval. **Giữ nguyên qua mọi method/budget/seed** → số liệu so sánh trực tiếp được. → train pool = 45,000.
-4. **Sweep đầy đủ** (plan-faithful):
-   - **Methods**: random, v0, v0_proto, v1 (4)
+4. **Sweep đầy đủ** (plan-faithful, V0+V1+V2):
+   - **Methods**: random, v0, v0_proto, v1, **v2** (5) — V2 là method chính paper
    - **Budgets**: 5%, 10%, 20%, 30%, 40%, 50% (6) — full scaling-law range của plan Part B2
    - **Seeds**: 42, 1, 2 (3) — error bars (plan Tuần 4-5)
-   - Tổng: **72 fine-tune runs** với error bars chuẩn
+   - Tổng: **90 fine-tune runs** với error bars chuẩn
 5. **Cluster**: cho mỗi seed, k-means spherical với `k=150` trên train_zv.
 6. **Fine-tune**: unfreeze 4 transformer block cuối (image + text) + projection, InfoNCE đối xứng, 3 epoch, lr 1e-5, batch 96, AMP. (~28% params trainable.)
 7. **Eval**: image-text retrieval R@1/5/10 hai chiều trên val 5K (xem §5), **kèm per-category breakdown** (goal / full / wentwrong).
@@ -179,10 +209,10 @@ python scripts/run_sweep.py --config config.yaml
 
 ## 8. Số lần run & multi-session (full-rigor protocol)
 
-**Cấu hình mặc định = full rigor**:
-- 4 methods × 6 budgets × 3 seeds = **72 fine-tune runs**
-- + 1 zero-shot eval (anchor)
-- Total compute: ~17 h trên Kaggle P100
+**Cấu hình mặc định = full rigor (V0+V1+V2)**:
+- 5 methods × 6 budgets × 3 seeds = **90 fine-tune runs**
+- + 1 zero-shot eval (anchor) + Q_proxy text encoding (~10 sec)
+- Total compute: ~20-21 h trên Kaggle P100
 
 **Multi-session — không lo timeout**: `run_sweep.py` resumable qua `records.csv`. Chỉ cần Kaggle quota tuần ≥ 17h (Kaggle cho 30h GPU/tuần).
 
@@ -204,7 +234,10 @@ data.sample_size: 50000      # pool size lấy từ shard đã tải
 data.val_size: 5000          # gallery hold-out (lớn → tránh bão hòa)
 cluster.k: 150               # ~ sqrt(N/2) cho 45K pool
 coreset.budgets: [0.05, 0.10, 0.20, 0.30, 0.40, 0.50]  # full scaling-law range
-coreset.methods: [random, v0, v0_proto, v1]
+coreset.methods: [random, v0, v0_proto, v1, v2]   # v2 = full plan method
+coreset.v2_alpha: 0.5         # exponent in B_k ∝ n_k^α × (1+W_k/W_avg)
+qproxy.queries_json_path: ".../queries.json"   # downloaded by setup_qproxy.py
+qproxy.cache_path: ".../qproxy_clip_text_emb.npy"
 train.seeds: [42, 1, 2]      # error bars (plan-faithful)
 train.num_epochs: 3
 train.batch_size: 96         # fit P100 16GB + AMP
@@ -222,13 +255,15 @@ cawot-cm-v0/
 │   ├── data.py                  # TrainPoolDataset + build_pool (JSONL → ảnh)
 │   ├── embed.py                 # extract image / image+text CLIP embeddings
 │   ├── cluster.py               # FAISS k-means spherical
-│   ├── select.py                # random / v0 / v0_proto / v1 (+ facility_location_greedy, cross_modal_similarity)
+│   ├── select.py                # random / v0 / v0_proto / v1 / v2 (+ helpers)
+│   ├── qproxy.py                # Q_proxy loading + CLIP text re-encoding (V2)
 │   ├── train.py                 # train_on_dataset (CLIP last-4-layer + InfoNCE)
-│   ├── eval.py                  # image-text retrieval R@k
+│   ├── eval.py                  # image-text retrieval R@k + per-category split
 │   └── utils.py
 ├── scripts/
 │   ├── setup_data.py            # ★ tải + giải nén N shards từ HF
-│   └── run_sweep.py             # ★ END-TO-END: V0 family + V1, mọi budget/seed
+│   ├── setup_qproxy.py          # ★ tải Q_proxy queries.json từ Drive (V2 only)
+│   └── run_sweep.py             # ★ END-TO-END: V0 family + V1 + V2
 └── notebooks/
     └── kaggle_v0.ipynb          # ★ Kaggle template (clone → tải → sweep → plot)
 ```
@@ -249,13 +284,20 @@ cawot-cm-v0/
 
 ---
 
-## 12. Roadmap → V2
+## 12. Roadmap
 
 | Version | Thêm | Trạng thái |
 |---|---|---|
 | V0 | farthest-from-centroid | ✅ chạy xong (negative result, motivate V1) |
-| V0-proto | closest-to-centroid | ✅ code xong, chạy trong sweep |
-| **V1** | cross-modal cost + facility location | ✅ code xong, **cần chạy sweep** |
-| V2 | + Q_proxy (LLM queries, EVA02 embeddings) + Wasserstein-aware budget allocation | ⏳ folder `qproxy/` của teammate đã sẵn sàng |
+| V0-proto | closest-to-centroid | ✅ chạy xong (Sorscher-aligned, prototype thắng) |
+| V1 | cross-modal cost + facility location | ✅ chạy xong (mixed result vs v0_proto overall) |
+| **V2** | + Q_proxy + Wasserstein-aware budget allocation | ✅ **code xong, cần chạy full sweep** |
 
-V2 sẽ tái dùng toàn bộ harness này (data, eval, sweep), chỉ thêm bước budget allocation theo Wasserstein gap tới Q_proxy.
+### Tốc độ training & lý do không dùng unsloth
+
+**Unsloth không support CLIP ViT-B/16** (chỉ support LLM/VLM như Llama/Qwen/LLaVA — custom Triton kernels cho attention không apply cho CLIP). Để fair so sánh V0/V1/V2, cả 3 đều dùng cùng setup: last-4-layer fine-tune + InfoNCE + AMP + batch 96. Không đổi giữa các version.
+
+**Tùy chọn tăng tốc (future work, không bắt buộc cho paper hiện tại)**:
+- LoRA via PEFT (r=16): giảm VRAM ~40%, tốc độ +20-40%, nhưng yêu cầu re-run **TOÀN BỘ** V0/V1/V2 với cùng setup mới để giữ ablation fair.
+- `torch.compile` (PyTorch 2.x): +30-50% throughput, compile overhead ~1 min/model. Drop-in nếu cần.
+- Đổi backbone sang VLM (LLaVA, Qwen2-VL) để dùng unsloth: major design change, không khuyến nghị cho workshop paper.

@@ -199,3 +199,149 @@ def select_v1(
     out = np.sort(np.concatenate(selected)).astype(np.int64) if selected else np.empty((0,), np.int64)
     logger.info(f"[v1] selected {len(out)} (target {budget})")
     return out
+
+
+# -----------------------------------------------------------------------------
+# V2: Wasserstein-aware budget (Q_proxy) + V1's within-cluster selection
+# -----------------------------------------------------------------------------
+
+
+def gaussian_w2_diag(emb1: np.ndarray, emb2: np.ndarray) -> float:
+    """Approximate 2-Wasserstein distance between two distributions via
+    Gaussian fit + diagonal covariance:
+
+        W2² ≈ ||μ_1 − μ_2||²  +  Σ_d (σ_{1,d} − σ_{2,d})²
+
+    Both emb1, emb2 are (n, d) arrays. Returns scalar W2 (square root taken).
+    Used because:
+      - Full Gaussian W2 needs Σ^{1/2} (O(d^3)); intractable for d=512, K=150.
+      - Diagonal Σ is well-defined even when n < d (rank deficiency avoided).
+      - Empirically used as a closed-form proxy in the OT-coreset literature
+        (GORACS, FDMat).
+    """
+    if emb1.shape[0] < 2 or emb2.shape[0] < 2:
+        return float(np.linalg.norm(emb1.mean(0) - emb2.mean(0)))
+    mu1 = emb1.mean(0)
+    mu2 = emb2.mean(0)
+    s1 = emb1.std(0, ddof=1)
+    s2 = emb2.std(0, ddof=1)
+    sq = float(np.sum((mu1 - mu2) ** 2) + np.sum((s1 - s2) ** 2))
+    return float(np.sqrt(max(sq, 0.0)))
+
+
+def compute_cluster_wasserstein_gaps(
+    text_emb: np.ndarray,
+    assignments: np.ndarray,
+    q_proxy_emb: np.ndarray,
+    K: int,
+) -> np.ndarray:
+    """W2 per cluster between cluster TEXT embeddings and Q_proxy embeddings.
+
+    Both inputs must live in the SAME CLIP text embedding space (L2-normalized
+    512-d for CLIP-B/16). Clusters with < 2 points get W=avg post-hoc so they
+    receive the average Wasserstein-driven boost (not zero).
+    """
+    W = np.zeros(K, dtype=np.float64)
+    for k in range(K):
+        mask = assignments == k
+        if int(mask.sum()) < 2:
+            W[k] = -1.0  # marker for "fill later"
+            continue
+        W[k] = gaussian_w2_diag(text_emb[mask], q_proxy_emb)
+    valid = W[W >= 0]
+    if len(valid) > 0:
+        fallback = float(valid.mean())
+    else:
+        fallback = 0.0
+    W[W < 0] = fallback
+    return W
+
+
+def wasserstein_aware_budgets(
+    cluster_sizes: np.ndarray,
+    W: np.ndarray,
+    total_budget: int,
+    alpha: float = 0.5,
+) -> np.ndarray:
+    """Plan budget allocation:
+
+        B_k  ∝  n_k^α  ×  (1 + W_k / W_avg)
+
+    Interpretation:
+      - n_k^α (α=0.5)  — sub-linear scaling vs cluster size: prevents a few
+                         very large clusters from dominating the coreset.
+      - (1 + W_k/W_avg) — boost for clusters with high Wasserstein distance to
+                         Q_proxy (i.e. clusters that DON'T look like test-time
+                         queries → coreset needs more samples to cover them).
+
+    Largest-remainder rounding, capped at cluster size.
+    """
+    sizes = cluster_sizes.astype(np.float64)
+    W_avg = float(W.mean()) if W.mean() > 0 else 1.0
+    weights = (sizes ** alpha) * (1.0 + W / W_avg)
+    weights = np.where(sizes > 0, weights, 0.0)
+    total = weights.sum()
+    if total <= 0:
+        return np.zeros_like(cluster_sizes)
+    raw = weights / total * total_budget
+    floor = np.floor(raw).astype(np.int64)
+    remainder = raw - floor
+    deficit = int(total_budget - floor.sum())
+    if deficit > 0:
+        order = np.argsort(-remainder)
+        for i in order:
+            if deficit == 0:
+                break
+            if floor[i] < int(sizes[i]):
+                floor[i] += 1
+                deficit -= 1
+    return np.minimum(floor, sizes.astype(np.int64))
+
+
+def select_v2(
+    zv: np.ndarray,
+    zt: np.ndarray,
+    centroids: np.ndarray,
+    assignments: np.ndarray,
+    q_proxy_emb: np.ndarray,
+    budget: int,
+    alpha: float = 0.5,
+    seed: int = 42,
+) -> np.ndarray:
+    """V2: Wasserstein-aware budget allocation + V1's cross-modal facility
+    location within each cluster. The full plan method.
+
+    zv, zt        : (N, d) image / text embeddings of train pool (CLIP-512d).
+    centroids/assignments : k-means on image embeddings (same as V0/V1).
+    q_proxy_emb   : (M, d) CLIP text embeddings of Q_proxy queries (same space).
+    budget        : total samples to select.
+    alpha         : exponent in B_k ∝ n_k^α × (1 + W_k/W_avg). 0.5 = plan default.
+    """
+    K = centroids.shape[0]
+    cluster_sizes = np.bincount(assignments, minlength=K)
+    W = compute_cluster_wasserstein_gaps(zt, assignments, q_proxy_emb, K)
+    budgets = wasserstein_aware_budgets(cluster_sizes, W, budget, alpha=alpha)
+
+    logger.info(
+        f"[v2] W per cluster: mean={W.mean():.3f} min={W.min():.3f} max={W.max():.3f}; "
+        f"budget min/median/max = {budgets.min()}/{int(np.median(budgets))}/{budgets.max()}"
+    )
+
+    selected: list[np.ndarray] = []
+    for k in range(K):
+        b_k = int(budgets[k])
+        if b_k == 0:
+            continue
+        idx_k = np.where(assignments == k)[0]
+        if len(idx_k) == 0:
+            continue
+        if b_k >= len(idx_k):
+            selected.append(idx_k)
+            continue
+        sim = cross_modal_similarity(zv[idx_k], zt[idx_k])
+        local = facility_location_greedy(sim, b_k)
+        selected.append(idx_k[local])
+
+    out = np.sort(np.concatenate(selected)).astype(np.int64) if selected else np.empty((0,), np.int64)
+    logger.info(f"[v2] selected {len(out)} (target {budget})")
+    return out
