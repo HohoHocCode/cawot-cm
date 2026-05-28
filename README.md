@@ -87,11 +87,17 @@ Cho V0/V1 sanity + sweep: **5 shards (~65K cặp)** là đủ. Full-1M chỉ c�
 1. **Pool**: random-sample `sample_size = 50,000` cặp từ các shard đã tải (seed cố định).
 2. **Embeddings**: trích CLIP ViT-B/16 (OpenAI) image + text embedding (512-d, L2-normalized). Cache lại.
 3. **Val set (FIXED)**: hold-out `val_size = 5,000` cặp làm tập eval retrieval. **Giữ nguyên qua mọi method/budget/seed** → số liệu so sánh trực tiếp được. → train pool = 45,000.
-4. **Sweep**: cho mỗi `seed`, cluster pool (k-means, `k=150`). Cho mỗi `budget ∈ {5,10,20,40}%`, mỗi method ∈ {random, v0, v0_proto, v1}: chọn coreset → fine-tune CLIP-B/16 → eval.
-5. **Fine-tune**: unfreeze 4 transformer block cuối (image + text) + projection, InfoNCE đối xứng, 3 epoch, lr 1e-5, batch 96, AMP. (~28% params trainable.)
-6. **Eval**: image-text retrieval R@1/5/10 hai chiều trên val 5K (xem §5).
+4. **Sweep đầy đủ** (plan-faithful):
+   - **Methods**: random, v0, v0_proto, v1 (4)
+   - **Budgets**: 5%, 10%, 20%, 30%, 40%, 50% (6) — full scaling-law range của plan Part B2
+   - **Seeds**: 42, 1, 2 (3) — error bars (plan Tuần 4-5)
+   - Tổng: **72 fine-tune runs** với error bars chuẩn
+5. **Cluster**: cho mỗi seed, k-means spherical với `k=150` trên train_zv.
+6. **Fine-tune**: unfreeze 4 transformer block cuối (image + text) + projection, InfoNCE đối xứng, 3 epoch, lr 1e-5, batch 96, AMP. (~28% params trainable.)
+7. **Eval**: image-text retrieval R@1/5/10 hai chiều trên val 5K (xem §5), **kèm per-category breakdown** (goal / full / wentwrong).
+8. **Resumability**: `run_sweep.py` đọc `records.csv` lúc khởi động, skip combo đã làm → an toàn khi Kaggle session timeout, multi-session free.
 
-**Selection model = task model = CLIP ViT-B/16** ở V0/V1 (khác V2 tương lai có thể dùng EVA02 cho selection).
+**Selection model = task model = CLIP ViT-B/16** ở V0/V1 (V2 tương lai có thể dùng EVA02 cho selection).
 
 ---
 
@@ -102,37 +108,49 @@ PAB Track 4 test set có **person id bị mask** (competition) → không có gr
 - Tính ma trận cosine similarity (5000×5000), với mỗi query đếm rank của cặp đúng.
 - Báo cáo: `t2i_R@{1,5,10}` (text→image), `i2t_R@{1,5,10}` (image→text), và `mean_R@1` = trung bình R@1 hai chiều.
 
-Đây là eval chuẩn cho cross-modal alignment (CLIP/BLIP/ALBEF). **Gallery 5,000** (không phải 2,000) để tránh bão hòa — với 2,000 mọi method đều ~94% R@1, không phân biệt được.
+Đây là eval chuẩn cho cross-modal alignment (CLIP/BLIP/ALBEF). Gallery 5,000 (không 2,000) để tránh bão hòa.
 
-**Caveat để ghi trong báo cáo**: đây là proxy retrieval nội bộ (synthetic→synthetic, exact-pair), không phải full Sim2Real person-id retrieval. Số liệu chính thức cho leaderboard ECCV cần submit prediction trên `name-masked_test_set/gallery.zip` (làm sau khi method ổn định).
+### Per-category breakdown — quan trọng cho rigor
+
+Train data PAB có 3 loại theo cấu trúc folder của image path (`train/imgs_N/<category>/X.jpg`):
+
+| Category | Tỉ lệ trên train | Semantic |
+|---|---|---|
+| `goal` | 37% | Hành động được kỳ vọng (normal-intent) |
+| `full` | 34% | Chuỗi đầy đủ của hành động (normal-ish) |
+| `wentwrong` | **29%** | **Hành động bị sai → ANOMALY** |
+
+Pipeline tự parse `category` từ image path. Val 5K (random từ train) → có ~3550 normal-ish (goal+full) + ~1450 anomaly (wentwrong).
+
+Mỗi run, eval report **R@k riêng cho từng category** (queries filter theo category, gallery vẫn là full 5K → realistic retrieval setting). Đây là cách kiểm chứng method có giúp tìm **anomaly** không, không chỉ overall.
+
+**Caveat ghi trong báo cáo**: vẫn là proxy retrieval nội bộ synthetic↔synthetic exact-pair, không phải Sim2Real real-gallery retrieval. Số liệu official cho leaderboard ECCV cần submit prediction trên `name-masked_test_set/gallery.zip` sau khi method ổn định. Nhưng per-category breakdown đã cho biết method có generalize sang anomaly hay không.
 
 ---
 
 ## 6. Kết quả đã có & cách diễn giải
 
-### V0 (đã chạy, 5K gallery, 1 seed) — **clean negative result**
+### Sweep V0 family + V1 — overall R@1, 5K val, **1 seed (chưa có error bar)**
 
 ```
-budget |  random | v0 (farthest) | Δ(v0 − random)
-  5%   |  79.94  |    75.23      |   −4.71
- 10%   |  84.25  |    81.29      |   −2.96
- 20%   |  88.23  |    86.44      |   −1.79
- 40%   |  91.13  |    89.93      |   −1.20
+budget |  random  |  v0 (farthest)  |  v0_proto (closest)  |  v1 (facility loc)
+  5%   |  79.94   |     75.23       |       82.05          |      80.65
+ 10%   |  84.65   |     80.81       |       87.08          |      85.52
+ 20%   |  88.93   |     86.50       |       89.84          |      88.04
+ 40%   |  90.87   |     90.25       |       91.99          |      90.56
 zero-shot mean_R@1 = 59.03
 ```
 
 **Diễn giải (dùng cho báo cáo)**:
-- V0 (farthest-from-centroid) **thua Random ở mọi budget**, và thua **nhiều nhất ở budget thấp** (−4.71 ở 5%), thu hẹp khi budget tăng.
-- Cơ chế: farthest-from-centroid = chọn **outlier/atypical**. Ở budget thấp, coreset toàn sample cực biên → kém đại diện → model generalize kém trên val điển hình. Budget tăng → buộc lấy thêm sample trung tâm → hội tụ về Random.
-- **Khớp Sorscher et al., NeurIPS 2022** ("Beyond Neural Scaling Laws"): ở budget nhỏ nên giữ sample **prototypical**, chỉ budget lớn mới nên giữ sample hard/atypical. V0 làm ngược → đúng dấu hiệu quan sát được.
-- → Đây là **negative result sạch, có lý thuyết**, và là **động lực trực tiếp cho V1** (chọn sample đại diện thay vì biên).
 
-### V0-proto & V1 (sẽ có sau khi chạy sweep) — kỳ vọng
-- `v0_proto > random` ở budget thấp (xác nhận Sorscher từ chiều ngược lại).
-- `v1 ≳ v0_proto > random > v0` ở budget thấp; mọi method hội tụ ở 40%.
-- Headline: **V1 vượt Random nhiều nhất ở 5%** = "cross-modal representative coverage giúp khi data khan hiếm".
+1. **Trục prototypicality ↔ atypicality quyết định kết quả**:
+   - `v0` (farthest = atypical) → tệ nhất, thua Random mọi budget (max −4.71 @ 5%)
+   - `v1` (facility location coverage) → middle, thắng Random ở 5/10% (+0.7/+0.9), thua ở 20/40%
+   - `v0_proto` (closest = prototypical) → **tốt nhất**, thắng Random mọi budget (+0.9 đến +2.4)
+2. **Khớp Sorscher et al., NeurIPS 2022**: ở budget nhỏ, sample điển hình thắng. v0_proto thắng vì chọn đúng sample điển hình; v1 facility location bị kéo về phía biên do objective coverage → kém v0_proto.
+3. **Caveat quan trọng**: val random hold-out trộn 3 category (goal/full/wentwrong). v0_proto thắng OVERALL — chưa biết có thắng anomaly (wentwrong) không. Đây là lý do protocol mới (§4-5) thêm **per-category eval** + **3 seeds**.
 
-Nếu V1 **không** vượt Random → báo lại; có thể cần điều chỉnh cost weighting hoặc cluster granularity.
+**Kết quả overall trên là 1 seed (seed=42). Sweep đầy đủ 3 seeds × 6 budgets × 4 methods × 4 categories đang trong protocol mới — sẽ thay thế bảng này khi có.**
 
 ---
 
@@ -159,13 +177,23 @@ python scripts/run_sweep.py --config config.yaml
 
 ---
 
-## 8. Số lần run & multi-seed (theo plan)
+## 8. Số lần run & multi-session (full-rigor protocol)
 
-- **Plan** (Tuần 4-5): headline budget 20% chạy **3 seeds**; budget khác 1 seed; scaling curve 5-50%.
-- **Mặc định hiện tại**: `train.seeds: [42]` (1 seed) để confirm V1 trend nhanh (~3.5 h).
-- **Để có error bar đúng plan**: đổi `train.seeds: [42, 1, 2]`. Lưu ý 3 seeds × 16 runs ≈ 8-9 h > giới hạn 1 session Kaggle (12h nhưng rủi ro). **Khuyến nghị**: hoặc (a) chạy full sweep 1 seed trước rồi chạy riêng 3 seeds chỉ ở 20%; hoặc (b) tách 3 session Kaggle, mỗi session 1 seed (cache embeddings giúp seed sau nhanh hơn vì không extract lại).
+**Cấu hình mặc định = full rigor**:
+- 4 methods × 6 budgets × 3 seeds = **72 fine-tune runs**
+- + 1 zero-shot eval (anchor)
+- Total compute: ~17 h trên Kaggle P100
 
-Báo cáo workshop: 1 seed full sweep + 3 seeds ở 20% headline là đủ thuyết phục. Conference: 3 seeds toàn bộ.
+**Multi-session — không lo timeout**: `run_sweep.py` resumable qua `records.csv`. Chỉ cần Kaggle quota tuần ≥ 17h (Kaggle cho 30h GPU/tuần).
+
+Có 2 cách chia session:
+
+| Strategy | Cách làm | Pros/Cons |
+|---|---|---|
+| **A. Tự động** | Giữ `train.seeds: [42, 1, 2]`. Mỗi session restart cell "Run sweep" → tiếp tục từ chỗ dừng. | Đơn giản, không cần đụng config. |
+| **B. Thủ công** | Session 1: `seeds: [42]`. Session 2: `seeds: [1]`. Session 3: `seeds: [2]`. | Kiểm soát chính xác mỗi session làm gì. |
+
+Output sau khi xong: `records.csv` chứa **4 method × 6 budget × 3 seed × 4 category = 288 rows** (cộng zero-shot rows). `summary.json` aggregate theo mean ± std. Quá đủ rigor cho cả workshop lẫn conference.
 
 ---
 
@@ -175,12 +203,12 @@ Báo cáo workshop: 1 seed full sweep + 3 seeds ở 20% headline là đủ thuy�
 data.sample_size: 50000      # pool size lấy từ shard đã tải
 data.val_size: 5000          # gallery hold-out (lớn → tránh bão hòa)
 cluster.k: 150               # ~ sqrt(N/2) cho 45K pool
-coreset.budgets: [0.05, 0.10, 0.20, 0.40]
+coreset.budgets: [0.05, 0.10, 0.20, 0.30, 0.40, 0.50]  # full scaling-law range
 coreset.methods: [random, v0, v0_proto, v1]
-train.seeds: [42]            # → [42,1,2] cho error bar
+train.seeds: [42, 1, 2]      # error bars (plan-faithful)
 train.num_epochs: 3
 train.batch_size: 96         # fit P100 16GB + AMP
-train.keep_checkpoints: false  # xóa ckpt sau eval (tiết kiệm disk)
+train.keep_checkpoints: false  # xóa ckpt sau eval (72 ckpts × 600MB không fit Kaggle disk)
 ```
 
 ---

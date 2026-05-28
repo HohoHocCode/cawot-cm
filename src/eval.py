@@ -48,30 +48,45 @@ def _encode_image_text_pairs(model, loader, device, amp: bool):
     return np.concatenate(img_feats, 0), np.concatenate(txt_feats, 0)
 
 
-def _i2t_t2i_recall(sims: np.ndarray, k_values=(1, 5, 10)) -> dict:
-    """sims: (N, N) cosine. sims[i, j] = sim(text_i, image_j).
-    Diagonal is the correct pair. Returns text->image and image->text R@k.
+def _ranks_from_sims(sims: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Return (t2i_rank, i2t_rank), each 0-indexed rank of the correct match.
+
+    sims: (N, N) where sims[i,j] = sim(text_i, image_j). Diagonal is correct pair.
+    rank = number of distractors strictly outscoring the diagonal entry.
+    O(N²) without full argsort; scales to 5K+ gallery.
     """
-    n = sims.shape[0]
-    out: dict[str, float] = {}
-
-    # 0-indexed rank of the correct match = number of distractors scoring
-    # strictly higher than the diagonal. O(N^2) without a full argsort, so it
-    # scales fine to a 5K+ gallery. Ties are negligible for continuous cosine.
     diag = np.diag(sims)
+    t2i_rank = (sims > diag[:, None]).sum(axis=1)    # per query (row)
+    i2t_rank = (sims > diag[None, :]).sum(axis=0)    # per query (column)
+    return t2i_rank, i2t_rank
 
-    # text -> image: row i, correct column is i
-    t2i_rank = (sims > diag[:, None]).sum(axis=1)
+
+def _recall_from_ranks(t2i_rank, i2t_rank, mask, k_values) -> dict:
+    """R@k on the subset of queries indicated by boolean `mask`.
+
+    Gallery is always the FULL pool — we just filter which queries we average
+    over. This means per-category numbers measure "given a query of category C,
+    can we find its correct image in the full mixed gallery?" (matches the
+    realistic retrieval setting).
+    """
+    n = int(mask.sum())
+    if n == 0:
+        return {"n_pairs": 0}
+    t2i = t2i_rank[mask]
+    i2t = i2t_rank[mask]
+    out: dict = {"n_pairs": n}
     for k in k_values:
-        out[f"t2i_R@{k}"] = float((t2i_rank < k).mean() * 100.0)
-
-    # image -> text: column i correct → compare down each column
-    i2t_rank = (sims > diag[None, :]).sum(axis=0)
-    for k in k_values:
-        out[f"i2t_R@{k}"] = float((i2t_rank < k).mean() * 100.0)
-
+        out[f"t2i_R@{k}"] = float((t2i < k).mean() * 100.0)
+        out[f"i2t_R@{k}"] = float((i2t < k).mean() * 100.0)
     out["mean_R@1"] = 0.5 * (out["t2i_R@1"] + out["i2t_R@1"])
-    out["n_pairs"] = int(n)
+    return out
+
+
+def _i2t_t2i_recall(sims: np.ndarray, k_values=(1, 5, 10)) -> dict:
+    """Overall image-text retrieval R@k (no category split)."""
+    n = sims.shape[0]
+    t2i_rank, i2t_rank = _ranks_from_sims(sims)
+    out = _recall_from_ranks(t2i_rank, i2t_rank, np.ones(n, dtype=bool), k_values)
     return out
 
 
@@ -81,10 +96,14 @@ def evaluate_val_split(
     checkpoint_path: str | None,
     run_name: str,
 ) -> dict:
-    """V0 sanity eval: image-text retrieval on held-out (image, caption) pairs.
+    """Image-text retrieval R@k on a held-out val set, with per-category split.
 
-    `val_dataset` must yield {"image": tensor, "text_tokens": LongTensor} in
-    1-to-1 order (image[i] is the correct match for text[i]).
+    If `val_dataset.categories` is set (array of length N with category strings,
+    e.g. "goal"/"full"/"wentwrong"), also reports R@k filtered to each category
+    (queries-only filter; gallery stays the full N images → measures realistic
+    retrieval in the mixed pool).
+
+    Returns dict: {"overall": {...}, "<cat>": {...}, ...}.
     """
     device = get_device("cuda")
     out_dir = ensure_dir(cfg["eval"]["output_dir"])
@@ -110,9 +129,27 @@ def evaluate_val_split(
     )
 
     img_feats, txt_feats = _encode_image_text_pairs(model, loader, device, cfg["train"]["amp"])
-    sims = txt_feats @ img_feats.T   # (N, N)  text→image
-    metrics = _i2t_t2i_recall(sims, k_values=tuple(cfg["eval"]["k_values"]))
-    logger.info(f"[{run_name}] {metrics}")
+    sims = txt_feats @ img_feats.T
+    n = sims.shape[0]
+    t2i_rank, i2t_rank = _ranks_from_sims(sims)
+    k_values = tuple(cfg["eval"]["k_values"])
+
+    metrics: dict = {
+        "overall": _recall_from_ranks(t2i_rank, i2t_rank, np.ones(n, dtype=bool), k_values),
+    }
+
+    categories = getattr(val_dataset, "categories", None)
+    if categories is not None:
+        for cat in sorted(set(categories.tolist())):
+            mask = categories == cat
+            metrics[cat] = _recall_from_ranks(t2i_rank, i2t_rank, mask, k_values)
+
+    # Short log line
+    summary = " | ".join(
+        f"{cat}: R@1={m.get('mean_R@1', 0.0):.2f} (n={m['n_pairs']})"
+        for cat, m in metrics.items()
+    )
+    logger.info(f"[{run_name}] {summary}")
 
     out_json = Path(out_dir) / f"{run_name}_metrics.json"
     with open(out_json, "w", encoding="utf-8") as f:

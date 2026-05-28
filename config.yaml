@@ -41,10 +41,9 @@ cluster:
   output_path: "/kaggle/working/outputs/clusters.npz"
 
 coreset:
-  # Budget sweep (fraction of train pool). Matches the plan's scaling-law
-  # points (Part B2: 5/10/20/30/40/50%). 4 affordable points: 20% headline
-  # plus low/high anchors. Selection effect is largest at low budget.
-  budgets: [0.05, 0.10, 0.20, 0.40]
+  # Budget sweep matching the plan's scaling-law points exactly
+  # (Part B2: 5/10/20/30/40/50%). Smooth curve from low to high budget.
+  budgets: [0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
   # Methods compared in one sweep:
   #   random   - uniform baseline
   #   v0       - farthest-from-centroid (diversity / atypical) [plan V0]
@@ -69,11 +68,14 @@ train:
   amp: true
   output_dir: "/kaggle/working/outputs/checkpoints"
   log_every: 50
-  # Seeds for the sweep. Start with 1 seed to confirm the eval de-saturates,
-  # then bump to [42, 1, 2] for error bars. Each seed re-clusters + re-selects
-  # random + retrains, so error bars capture selection + training noise.
-  seeds: [42]
-  # Delete each checkpoint right after eval to save Kaggle disk (8-24 runs).
+  # 3 seeds for proper error bars (plan Tuần 4-5 spec). Each seed re-clusters
+  # + re-selects random + retrains → error bars capture selection + training
+  # noise. Total sweep: 4 methods × 6 budgets × 3 seeds = 72 runs ≈ 17 h
+  # compute. Split across multiple Kaggle sessions; run_sweep.py is RESUMABLE
+  # (reads records.csv at start and skips completed combos).
+  seeds: [42, 1, 2]
+  # Delete each checkpoint right after eval (72 ckpts × ~600 MB won't fit
+  # Kaggle disk). Numbers are reproducible from seed.
   keep_checkpoints: false
 
 eval:

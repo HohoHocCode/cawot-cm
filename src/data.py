@@ -99,10 +99,15 @@ def build_pool(
         for e in _iter_jsonl(jsonl_file):
             if "image" not in e or "caption" not in e:
                 continue
+            # Parse category from path: "train/imgs_0/goal/0.jpg" → "goal".
+            # PAB train uses goal/full/wentwrong (wentwrong = anomaly).
+            parts = e["image"].split("/")
+            category = parts[-2] if len(parts) >= 2 else "unknown"
             anns.append({
                 "image": e["image"],
                 "caption": e["caption"],
                 "image_id": e.get("image_id", ""),
+                "category": category,
             })
 
     if not anns:
@@ -150,6 +155,8 @@ class TrainPoolDataset(Dataset):
         self.transform = image_transform
         self.tokenizer = tokenizer
         self.return_index = return_index
+        # Parallel array for per-category eval (no need to thread through batches).
+        self.categories = np.array([a.get("category", "unknown") for a in anns])
 
     def __len__(self) -> int:
         return len(self.anns)
