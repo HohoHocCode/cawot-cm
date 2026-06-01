@@ -44,13 +44,14 @@ coreset:
   # Budget sweep matching the plan's scaling-law points exactly
   # (Part B2: 5/10/20/30/40/50%). Smooth curve from low to high budget.
   budgets: [0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
-  # Methods compared in one sweep:
+  # Methods compared in one sweep (Hướng 2.5):
   #   random   - uniform baseline
-  #   v0       - farthest-from-centroid (diversity / atypical) [plan V0]
-  #   v0_proto - closest-to-centroid (prototype / representative) [diagnostic]
+  #   v0_proto - closest-to-centroid (prototype / representative) — wins prev run
   #   v1       - cross-modal cost + facility location [plan V1]
   #   v2       - Wasserstein-aware budget + cross-modal facility location [plan V2]
-  methods: [random, v0, v0_proto, v1, v2]
+  # `v0` (farthest-from-centroid) dropped: known loser from prev 1-seed run,
+  # cited as negative-control baseline in ablation appendix.
+  methods: [random, v0_proto, v1, v2]
   # V2 budget formula:  B_k ∝ n_k^alpha × (1 + W_k / W_avg).
   # alpha = 0.5 (plan default) — sub-linear scaling vs cluster size.
   v2_alpha: 0.5

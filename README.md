@@ -207,12 +207,40 @@ python scripts/run_sweep.py --config config.yaml
 
 ---
 
-## 8. Số lần run & multi-session (full-rigor protocol)
+## 8. Số lần run & multi-session (Hướng 2.5, workshop-scale)
 
-**Cấu hình mặc định = full rigor (V0+V1+V2)**:
-- 5 methods × 6 budgets × 3 seeds = **90 fine-tune runs**
-- + 1 zero-shot eval (anchor) + Q_proxy text encoding (~10 sec)
-- Total compute: ~20-21 h trên Kaggle P100
+**Cấu hình mặc định** (Hướng 2.5 — drop v0 farthest vì đã biết tệ nhất từ prev run):
+- 4 methods × 6 budgets × 3 seeds = **72 fine-tune runs**
+- + 1 zero-shot eval + Q_proxy text encoding (~10 sec)
+- Total compute: ~16 h trên Kaggle P100
+
+`v0` (farthest-from-centroid) cited từ run 1-seed cũ làm negative control trong ablation appendix — không waste compute multi-seed lên method đã biết là loser.
+
+### Pre-flight (BẮT BUỘC trước khi launch full sweep)
+
+1. **Smoke test V2** (~25 min): `python scripts/run_sweep.py --config configs/smoke.yaml`
+   - Verify V2 pipeline end-to-end (Q_proxy load + W2 compute + budget alloc + training + eval)
+   - Output: `outputs_smoke/eval/summary.json`. Sanity: V2 R@1 > zero-shot R@1.
+   - **Tốn duy nhất ~18 min embedding extraction** (cached cho diagnostic + full sweep luôn — không tốn lại).
+
+2. **Diagnostic** (~5 min, sau smoke): `python scripts/diagnose_selection.py --config config.yaml`
+   - `outputs/diagnostic/selection_pca.png` — 2D PCA scatter, 4 methods × selection
+   - `outputs/diagnostic/image_grid_v0_vs_proto.png` — **hình minh họa V0 vs V0_proto 16 ảnh**, evidence trực quan cho paper
+   - `outputs/diagnostic/qproxy_quality.png` — pairwise sim hist + PCA effective dim
+   - `outputs/diagnostic/qproxy_themes.txt` — 20 KMeans themes với example queries (defensive against reviewer skeptical về Q_proxy quality)
+
+### Multi-session strategy
+
+`run_sweep.py` resumable qua `records.csv`. Mỗi Kaggle session ~5.5h hiệu dụng (limit 9h an toàn).
+
+**Recommend chia 3 session**:
+| Session | Combos chạy | Time |
+|---|---|---|
+| 1 | seed=42 (~24 runs) + smoke + diagnostic | ~5.5h |
+| 2 | seed=1 (~24 runs) | ~5.5h |
+| 3 | seed=2 (~24 runs) + final plots | ~5.5h |
+
+Giữa session: **Save Version** → session sau **Add Data** attach previous output → copy `records.csv` về `/kaggle/working/outputs/eval/`. Notebook cell 5 có template instructions.
 
 **Multi-session — không lo timeout**: `run_sweep.py` resumable qua `records.csv`. Chỉ cần Kaggle quota tuần ≥ 17h (Kaggle cho 30h GPU/tuần).
 
@@ -234,7 +262,7 @@ data.sample_size: 50000      # pool size lấy từ shard đã tải
 data.val_size: 5000          # gallery hold-out (lớn → tránh bão hòa)
 cluster.k: 150               # ~ sqrt(N/2) cho 45K pool
 coreset.budgets: [0.05, 0.10, 0.20, 0.30, 0.40, 0.50]  # full scaling-law range
-coreset.methods: [random, v0, v0_proto, v1, v2]   # v2 = full plan method
+coreset.methods: [random, v0_proto, v1, v2]   # Hướng 2.5 — drop v0 (cited from prev 1-seed run)
 coreset.v2_alpha: 0.5         # exponent in B_k ∝ n_k^α × (1+W_k/W_avg)
 qproxy.queries_json_path: ".../queries.json"   # downloaded by setup_qproxy.py
 qproxy.cache_path: ".../qproxy_clip_text_emb.npy"
@@ -260,10 +288,13 @@ cawot-cm-v0/
 │   ├── train.py                 # train_on_dataset (CLIP last-4-layer + InfoNCE)
 │   ├── eval.py                  # image-text retrieval R@k + per-category split
 │   └── utils.py
+├── configs/
+│   └── smoke.yaml               # smoke-test config (V2 only, 5% × 1 seed × 1 epoch)
 ├── scripts/
 │   ├── setup_data.py            # ★ tải + giải nén N shards từ HF
 │   ├── setup_qproxy.py          # ★ tải Q_proxy queries.json từ Drive (V2 only)
-│   └── run_sweep.py             # ★ END-TO-END: V0 family + V1 + V2
+│   ├── diagnose_selection.py    # ★ pre-sweep viz (PCA + image grid + Q_proxy quality)
+│   └── run_sweep.py             # ★ END-TO-END: V0 family + V1 + V2 sweep
 └── notebooks/
     └── kaggle_v0.ipynb          # ★ Kaggle template (clone → tải → sweep → plot)
 ```
@@ -286,12 +317,28 @@ cawot-cm-v0/
 
 ## 12. Roadmap
 
-| Version | Thêm | Trạng thái |
+### Workshop submission (current scope)
+- **Scale**: 50K-sampled subset của 5 train shards (~5% của full 1M PAB).
+- **Framing trong báo cáo**: "Workshop-scale ablation on 50K sub-sample with multi-seed error bars. Full-1M numbers reserved for conference extension."
+- **Compute**: ~16 h Kaggle P100 cho 72 runs. Fit free quota 30h/tuần.
+- **Status pipeline**:
+
+| Version | Trạng thái | Notes |
 |---|---|---|
-| V0 | farthest-from-centroid | ✅ chạy xong (negative result, motivate V1) |
-| V0-proto | closest-to-centroid | ✅ chạy xong (Sorscher-aligned, prototype thắng) |
-| V1 | cross-modal cost + facility location | ✅ chạy xong (mixed result vs v0_proto overall) |
-| **V2** | + Q_proxy + Wasserstein-aware budget allocation | ✅ **code xong, cần chạy full sweep** |
+| V0 (farthest) | ✅ run xong 1-seed prev | dropped khỏi sweep mới — negative control trong appendix |
+| V0_proto (closest) | ✅ run xong 1-seed prev | included trong sweep với 3 seeds |
+| V1 (cross-modal + facility loc) | ✅ run xong 1-seed prev | included với 3 seeds |
+| **V2** (full plan) | ✅ code xong, **cần chạy full sweep** | included với 3 seeds, per-category, headline method |
+
+### Conference upgrade (future work, để trong "Future Work" section của paper)
+
+| Upgrade | Hiện trạng | Khi nào |
+|---|---|---|
+| **Full 1M scale** | Cần A100 80GB hoặc thuê GPU cloud (Kaggle disk ~50GB không fit 104GB raw data) | Sau khi workshop notified |
+| **Theory bounds** (Rademacher + Wasserstein stability) | Cần theory-strong collaborator | Pre-conference draft |
+| **Cross-dataset transfer** (PAB → CUHK-PEDES → ICFG-PEDES) | Cần download + protocol design | Pre-conference draft |
+| **LoRA acceleration** (PEFT r=16) | Để fit conference timeline khi compute tăng | Optional, không phá ablation V0/V1/V2 nếu rerun toàn bộ với LoRA |
+| **Real-PAB person-id eval** (sau khi ECCV unmask gallery) | Đợi competition organizer | Post-workshop |
 
 ### Tốc độ training & lý do không dùng unsloth
 

@@ -1,0 +1,67 @@
+# Smoke-test config — verifies V2 end-to-end (~25-30 min on Kaggle P100).
+#
+# What it does:
+#   - Reuses cached embeddings if present (else extracts; that's the ~18 min cost first time)
+#   - Reuses cached Q_proxy embeddings if present
+#   - Runs ONLY: v2, 5% budget, 1 seed, 1 epoch
+#   - Smaller val (1K) for faster eval
+#
+# After smoke passes, run the full sweep with config.yaml. Both share
+# embedding caches so the 18 min extraction cost is paid once.
+
+seed: 42
+
+data:
+  image_root: "/kaggle/working/pab_data/images"
+  annotations_dir: "/kaggle/working/pab_data/annotations"
+  sample_size: 50000
+  val_size: 1000             # smaller for faster smoke eval
+  image_size: 224
+  num_workers: 2
+
+embed:
+  model: "ViT-B-16"
+  pretrained: "openai"
+  batch_size: 128
+  device: "cuda"
+  output_dir: "/kaggle/working/outputs/embeddings"   # SHARED with main sweep
+
+cluster:
+  k: 150
+  niter: 25
+  spherical: true
+  use_gpu: true
+  output_path: "/kaggle/working/outputs_smoke/clusters.npz"
+
+coreset:
+  budgets: [0.05]            # one budget
+  methods: [v2]              # V2 only — purpose is V2 verification
+  v2_alpha: 0.5
+  output_dir: "/kaggle/working/outputs_smoke"
+
+qproxy:
+  queries_json_path: "/kaggle/working/qproxy/queries.json"
+  cache_path: "/kaggle/working/outputs/embeddings/qproxy_clip_text_emb.npy"   # SHARED
+
+train:
+  model: "ViT-B-16"
+  pretrained: "openai"
+  unfreeze_last_n_layers: 4
+  batch_size: 96
+  num_epochs: 1              # SMOKE: 1 epoch
+  lr: 1.0e-5
+  weight_decay: 0.1
+  warmup_steps: 50
+  temperature: 0.07
+  use_learned_temp: true
+  grad_accum_steps: 1
+  amp: true
+  output_dir: "/kaggle/working/outputs_smoke/checkpoints"
+  log_every: 25
+  seeds: [42]
+  keep_checkpoints: false
+
+eval:
+  batch_size: 128
+  k_values: [1, 5]
+  output_dir: "/kaggle/working/outputs_smoke/eval"
