@@ -1,0 +1,68 @@
+# Smoke-test config for V2.1 (~30 min on Kaggle P100 after data/Q_proxy setup).
+#
+# It verifies the new path end-to-end:
+#   hierarchical k-means -> Sliced Wasserstein coarse budget ->
+#   prototype-conditioned submodular fine selection -> train -> eval.
+
+seed: 42
+
+data:
+  image_root: "/kaggle/working/pab_data/images"
+  annotations_dir: "/kaggle/working/pab_data/annotations"
+  sample_size: 50000
+  val_size: 1000
+  image_size: 224
+  num_workers: 2
+
+embed:
+  model: "ViT-B-16"
+  pretrained: "openai"
+  batch_size: 128
+  device: "cuda"
+  output_dir: "/kaggle/working/outputs/embeddings"
+
+cluster:
+  k: 150
+  niter: 25
+  spherical: true
+  use_gpu: true
+  output_path: "/kaggle/working/outputs_smoke_v2_1/clusters.npz"
+
+coreset:
+  budgets: [0.05]
+  methods: [v2_1]
+  v2_alpha: 0.5
+  v2_1:
+    k_coarse: 20
+    k_fine: 10
+    num_projections: 128
+    selection_alpha: 0.75
+    lambda_image: 0.7
+  output_dir: "/kaggle/working/outputs_smoke_v2_1"
+
+qproxy:
+  queries_json_path: "/kaggle/working/qproxy/queries.json"
+  cache_path: "/kaggle/working/outputs/embeddings/qproxy_clip_text_emb.npy"
+
+train:
+  model: "ViT-B-16"
+  pretrained: "openai"
+  unfreeze_last_n_layers: 4
+  batch_size: 96
+  num_epochs: 1
+  lr: 1.0e-5
+  weight_decay: 0.1
+  warmup_steps: 50
+  temperature: 0.07
+  use_learned_temp: true
+  grad_accum_steps: 1
+  amp: true
+  output_dir: "/kaggle/working/outputs_smoke_v2_1/checkpoints"
+  log_every: 25
+  seeds: [42]
+  keep_checkpoints: false
+
+eval:
+  batch_size: 128
+  k_values: [1, 5]
+  output_dir: "/kaggle/working/outputs_smoke_v2_1/eval"
