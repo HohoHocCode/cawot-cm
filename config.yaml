@@ -92,7 +92,8 @@ train:
   log_every: 50
   # 3 seeds for proper error bars (plan Tuần 4-5 spec). Each seed re-clusters
   # + re-selects random + retrains → error bars capture selection + training
-  # noise. V2.1 add-on sweep: 1 method × 6 budgets × 3 seeds = 18 runs.
+  # noise. V2.1 add-on sweep: 1 method × 6 budgets × 3 seeds = 18 runs
+  # (~12-15h on Kaggle P100 including hierarchical clustering + SW2 selection).
   # Split across multiple Kaggle sessions; run_sweep.py is RESUMABLE
   # (reads records.csv at start and skips completed combos).
   seeds: [42, 1, 2]

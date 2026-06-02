@@ -236,7 +236,7 @@ python scripts/run_v2_1_grid.py --config config.yaml \
   --alphas 0.6,0.75,0.9 --lambdas 0.5,0.7,0.9 \
   --budgets 0.05,0.1,0.2 --seeds 42 --epochs 1
 
-# Full V2.1 add-on sweep: 6 budgets × 3 seeds = 18 runs
+# Full V2.1 add-on sweep: 6 budgets × 3 seeds = 18 runs (~12-15h on Kaggle P100)
 python scripts/run_sweep.py --config config.yaml
 ```
 
@@ -253,6 +253,7 @@ python scripts/run_sweep.py --config config.yaml
 - 1 method (`v2_1`) × 6 budgets × 3 seeds = **18 fine-tune runs**
 - + 1 zero-shot eval + Q_proxy text encoding nếu chưa cache
 - Baseline Random/V0_proto/V1/V2 đã có trong `result/`; chỉ rerun nếu đổi backbone/split/training setup.
+- Estimate thực tế cho full V2.1 add-on trên Kaggle P100: **~12-15h** gồm hierarchical clustering, SW2 selection, training, eval. Mini-grid khuyến nghị (`2 alpha × 2 lambda × 2 budgets × 1 seed`) thêm khoảng **~5h**.
 
 ### Pre-flight (BẮT BUỘC trước khi launch full sweep)
 
@@ -277,9 +278,9 @@ python scripts/run_sweep.py --config config.yaml
 **Recommend chia 3 session**:
 | Session | Combos chạy | Time |
 |---|---|---|
-| 1 | seed=42 (6 V2.1 runs) + smoke + diagnostic | ~2h |
-| 2 | seed=1 (6 V2.1 runs) | ~1.5h |
-| 3 | seed=2 (6 V2.1 runs) + final plots | ~1.5h |
+| 1 | smoke + diagnostic + seed=42 (6 V2.1 runs) | ~4-5h |
+| 2 | seed=1 (6 V2.1 runs) | ~4h |
+| 3 | seed=2 (6 V2.1 runs) + final plots | ~4h |
 
 Giữa session: **Save Version** → session sau **Add Data** attach previous output → copy `records.csv` về `/kaggle/working/outputs/eval/`. Notebook cell 5 có template instructions.
 

@@ -2,6 +2,7 @@ import numpy as np
 
 from src.select import wasserstein_aware_budgets
 from src.select_v2_1 import (
+    _facility_location_gain,
     exact_w2_1d_squared,
     prototype_conditioned_greedy,
     select_v2_1,
@@ -35,6 +36,24 @@ def test_wasserstein_aware_budgets_redistributes_after_capacity_caps():
     assert np.all(budgets <= sizes)
 
 
+def test_facility_location_gain_uses_sum_normalized_by_cluster_size():
+    sim = np.array(
+        [
+            [1.0, 0.2, 0.6],
+            [0.4, 1.0, 0.5],
+            [0.1, 0.3, 1.0],
+        ],
+        dtype=np.float64,
+    )
+    coverage = np.array([0.3, 0.2, 0.8], dtype=np.float64)
+
+    gains = _facility_location_gain(sim, coverage)
+
+    expected = np.maximum(sim - coverage[:, None], 0.0).sum(axis=0) / sim.shape[0]
+    assert np.allclose(gains, expected)
+    assert np.all((0.0 <= gains) & (gains <= 1.0))
+
+
 def test_prototype_conditioned_greedy_alpha_one_matches_top_prototypes():
     sim = np.eye(4, dtype=np.float64)
     proto = np.array([0.2, 0.9, 0.5, 0.7], dtype=np.float64)
@@ -42,6 +61,49 @@ def test_prototype_conditioned_greedy_alpha_one_matches_top_prototypes():
     selected = prototype_conditioned_greedy(sim, proto, k=2, alpha=1.0)
 
     assert selected.tolist() == [1, 3]
+
+
+def test_select_v2_1_uses_text_centroid_when_lambda_image_is_zero():
+    zv = np.array(
+        [
+            [1.0, 0.0],
+            [0.0, 1.0],
+            [-1.0, 0.0],
+        ],
+        dtype=np.float32,
+    )
+    zt = np.array(
+        [
+            [-1.0, 0.0],
+            [1.0, 0.0],
+            [0.8, 0.6],
+        ],
+        dtype=np.float32,
+    )
+    q = zt.copy()
+    coarse_assignments = np.array([0, 0, 0])
+    fine_assignments = np.array([0, 0, 0])
+    coarse_centroids = np.array([[1.0, 0.0]], dtype=np.float32)
+    fine_centroids = np.array([[[1.0, 0.0]]], dtype=np.float32)
+    fine_valid = np.array([[True]])
+
+    selected = select_v2_1(
+        zv=zv,
+        zt=zt,
+        coarse_centroids=coarse_centroids,
+        coarse_assignments=coarse_assignments,
+        fine_centroids=fine_centroids,
+        fine_assignments=fine_assignments,
+        fine_valid=fine_valid,
+        q_proxy_emb=q,
+        budget=1,
+        alpha=1.0,
+        lambda_image=0.0,
+        num_projections=1,
+        seed=3,
+    )
+
+    assert selected.tolist() == [2]
 
 
 def test_select_v2_1_returns_exact_budget_and_uses_hierarchy():

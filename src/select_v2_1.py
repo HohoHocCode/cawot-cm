@@ -24,6 +24,13 @@ def _normalize_rows(x: np.ndarray, eps: float = 1e-12) -> np.ndarray:
     return x / np.maximum(norms, eps)
 
 
+def _normalized_centroid(x: np.ndarray) -> np.ndarray:
+    x = np.asarray(x, dtype=np.float32)
+    if x.ndim != 2 or len(x) == 0:
+        raise ValueError(f"x must be a non-empty 2D array, got {x.shape}")
+    return _normalize_rows(x.mean(axis=0, keepdims=True))[0]
+
+
 def make_random_projections(dim: int, num_projections: int, seed: int) -> np.ndarray:
     """Random unit directions for sliced Wasserstein projections."""
     if num_projections <= 0:
@@ -135,6 +142,45 @@ def weighted_image_text_similarity(
     return sim.astype(np.float64)
 
 
+def _facility_location_gain(sim: np.ndarray, coverage: np.ndarray) -> np.ndarray:
+    """Marginal coverage gain normalized to the same [0, 1] scale as prototypes."""
+    sim = np.asarray(sim, dtype=np.float64)
+    coverage = np.asarray(coverage, dtype=np.float64).reshape(-1)
+    if sim.ndim != 2 or sim.shape[0] != sim.shape[1] or coverage.shape[0] != sim.shape[0]:
+        raise ValueError("sim must be square and coverage must match its size")
+    return np.maximum(sim - coverage[:, None], 0.0).sum(axis=0) / max(1, sim.shape[0])
+
+
+def _weighted_prototype_scores(
+    zv: np.ndarray,
+    zt: np.ndarray,
+    image_centroid: np.ndarray,
+    *,
+    lambda_image: float,
+) -> np.ndarray:
+    """Image/text prototype score aligned with the similarity weighting."""
+    if not (0.0 <= lambda_image <= 1.0):
+        raise ValueError(f"lambda_image must be in [0, 1], got {lambda_image}")
+    zv = np.asarray(zv, dtype=np.float32)
+    zt = np.asarray(zt, dtype=np.float32)
+    image_centroid = np.asarray(image_centroid, dtype=np.float32).reshape(1, -1)
+    if zv.ndim != 2 or zt.ndim != 2 or zv.shape != zt.shape:
+        raise ValueError(
+            f"zv and zt must have the same 2D shape, got {zv.shape} and {zt.shape}"
+        )
+    if image_centroid.shape[1] != zv.shape[1]:
+        raise ValueError(
+            "image_centroid dim must match embeddings, "
+            f"got {image_centroid.shape[1]} and {zv.shape[1]}"
+        )
+
+    lambda_text = 1.0 - lambda_image
+    image_proto = _normalize_rows(image_centroid)[0]
+    text_proto = _normalized_centroid(zt)
+    proto_cos = lambda_image * (zv @ image_proto) + lambda_text * (zt @ text_proto)
+    return np.clip(0.5 * (proto_cos + 1.0), 0.0, 1.0).astype(np.float64)
+
+
 def prototype_conditioned_greedy(
     sim: np.ndarray,
     prototype_scores: np.ndarray,
@@ -165,7 +211,7 @@ def prototype_conditioned_greedy(
     selected: list[int] = []
     jitter = rng.uniform(0, 1e-12, size=n)
     for _ in range(k):
-        facility_gain = np.maximum(sim - coverage[:, None], 0.0).mean(axis=0)
+        facility_gain = _facility_location_gain(sim, coverage)
         gains = alpha * prototype_scores + (1.0 - alpha) * facility_gain + jitter
         gains[~available] = -np.inf
         j = int(np.argmax(gains))
@@ -262,8 +308,12 @@ def select_v2_1(
                 zt[idx_cf],
                 lambda_image=lambda_image,
             )
-            proto_cos = zv[idx_cf] @ fine_centroids[c, f]
-            proto_scores = np.clip(0.5 * (proto_cos + 1.0), 0.0, 1.0)
+            proto_scores = _weighted_prototype_scores(
+                zv[idx_cf],
+                zt[idx_cf],
+                fine_centroids[c, f],
+                lambda_image=lambda_image,
+            )
             local = prototype_conditioned_greedy(
                 sim,
                 proto_scores,
