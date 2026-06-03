@@ -63,6 +63,13 @@ coreset:
     num_projections: 128
     selection_alpha: 0.75
     lambda_image: 0.7
+  # Paper-backed supplementary baselines. These are not in the default method
+  # list until configs/smoke_published_baselines.yaml passes.
+  published_baselines:
+    semdedup:
+      lambda_image: 0.5
+      max_similarity: 0.95
+      keep: hard
   output_dir: "/kaggle/working/outputs"
 
 # Q_proxy (V2/V2.1): LLM-generated synthetic text queries used as

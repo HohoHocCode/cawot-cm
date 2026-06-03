@@ -1,4 +1,5 @@
-"""End-to-end coreset sweep: V0 family + V1 + V2 + V2.1, all budgets/seeds, with
+"""End-to-end coreset sweep: V0 family + V1 + V2 + V2.1 + published baselines,
+all budgets/seeds, with
 per-category eval (goal / full / wentwrong) and resumability for multi-session
 Kaggle runs.
 
@@ -9,6 +10,9 @@ Methods (config coreset.methods):
   v1       - cross-modal cost + facility location (plan V1, the method)
   v2       - Gaussian-diag Wasserstein budget + V1 within-cluster selection
   v2_1     - Sliced-Wasserstein hierarchical prototype-conditioned selection
+  clipscore - top-B CLIP image/text compatibility filtering
+  semdedup  - SemDeDup-style semantic duplicate pruning on joint embeddings
+  k_center  - clustered k-center greedy on image embeddings
 
 Output:
   outputs/eval/records.csv    : 1 row per (method, budget, seed, category)
@@ -38,6 +42,11 @@ from src.embed import extract_image_text_embeddings, load_clip
 from src.eval import evaluate_val_split
 from src.qproxy import load_or_encode_qproxy
 from src.select import select_random, select_v0, select_v0_proto, select_v1, select_v2
+from src.select_published_baselines import (
+    select_clipscore,
+    select_clustered_k_center,
+    select_semdedup,
+)
 from src.select_v2_1 import select_v2_1
 from src.train import train_on_dataset
 from src.utils import ensure_dir, get_device, load_config, set_seed, setup_logger
@@ -77,6 +86,9 @@ def select_coreset(
     v2_1_alpha=0.75,
     v2_1_lambda_image=0.7,
     v2_1_num_projections=128,
+    semdedup_lambda_image=0.5,
+    semdedup_max_similarity=0.95,
+    semdedup_keep="hard",
 ):
     if method == "random":
         return select_random(n_train, b, seed=seed)
@@ -84,6 +96,22 @@ def select_coreset(
         return select_v0(zv, centroids, assignments, b, seed=seed)
     if method == "v0_proto":
         return select_v0_proto(zv, centroids, assignments, b, seed=seed)
+    if method == "clipscore":
+        return select_clipscore(zv, zt, b, seed=seed)
+    if method == "semdedup":
+        return select_semdedup(
+            zv,
+            zt,
+            centroids,
+            assignments,
+            b,
+            seed=seed,
+            lambda_image=semdedup_lambda_image,
+            max_similarity=semdedup_max_similarity,
+            keep=semdedup_keep,
+        )
+    if method == "k_center":
+        return select_clustered_k_center(zv, centroids, assignments, b, seed=seed)
     if method == "v1":
         return select_v1(zv, zt, centroids, assignments, b, seed=seed)
     if method == "v2":
@@ -154,7 +182,9 @@ def main():
     record_methods = [method_record_name(m, cfg) for m in methods]
     seeds = cfg["train"]["seeds"]
     keep_ckpts = cfg["train"].get("keep_checkpoints", False)
-    needs_text = any(m in methods for m in ("v1", "v2", "v2_1"))
+    needs_text = any(
+        m in methods for m in ("v1", "v2", "v2_1", "clipscore", "semdedup")
+    )
     needs_qproxy = any(m in methods for m in ("v2", "v2_1"))
     v2_alpha = float(cfg["coreset"].get("v2_alpha", 0.5))
     v2_1_cfg = cfg["coreset"].get("v2_1", {})
@@ -163,6 +193,11 @@ def main():
     v2_1_alpha = float(v2_1_cfg.get("selection_alpha", 0.75))
     v2_1_lambda_image = float(v2_1_cfg.get("lambda_image", 0.7))
     v2_1_num_projections = int(v2_1_cfg.get("num_projections", 128))
+    published_cfg = cfg["coreset"].get("published_baselines", {})
+    semdedup_cfg = published_cfg.get("semdedup", {})
+    semdedup_lambda_image = float(semdedup_cfg.get("lambda_image", 0.5))
+    semdedup_max_similarity = float(semdedup_cfg.get("max_similarity", 0.95))
+    semdedup_keep = str(semdedup_cfg.get("keep", "hard"))
     logger.info(f"methods={methods}  budgets={budgets}  seeds={seeds}  "
                 f"needs_text={needs_text}  needs_qproxy={needs_qproxy}  v2_alpha={v2_alpha}")
     if record_methods != methods:
@@ -280,7 +315,9 @@ def main():
     # === Sweep ===
     for seed in seeds:
         set_seed(seed)
-        needs_flat = any(m in methods for m in ("v0", "v0_proto", "v1", "v2"))
+        needs_flat = any(
+            m in methods for m in ("v0", "v0_proto", "v1", "v2", "semdedup", "k_center")
+        )
         centroids = assignments = None
         if needs_flat:
             centroids, assignments = kmeans_faiss(
@@ -317,6 +354,9 @@ def main():
                     v2_1_alpha=v2_1_alpha,
                     v2_1_lambda_image=v2_1_lambda_image,
                     v2_1_num_projections=v2_1_num_projections,
+                    semdedup_lambda_image=semdedup_lambda_image,
+                    semdedup_max_similarity=semdedup_max_similarity,
+                    semdedup_keep=semdedup_keep,
                 )
                 pool_idx = train_idx[local_idx]
                 train_ds = TrainPoolDataset(

@@ -1,4 +1,4 @@
-# CAWOT-CM — Coreset Selection cho Text-based Person Anomaly Retrieval (V0 + V1 + V2 + V2.1)
+# CAWOT-CM — Coreset Selection cho Text-based Person Anomaly Retrieval (V0 + V1 + V2 + V2.1 + published baselines)
 
 Codebase cho phần **coreset selection** của paper CAWOT-CM, chạy trên benchmark **PAB ECCV'26 Workshop Track 4** (Pedestrian Anomaly Behavior). Mục tiêu: chọn một tập con (coreset) nhỏ từ pool ảnh-caption synthetic sao cho fine-tune trên coreset đó cho kết quả retrieval tốt nhất với cùng một ngân sách dữ liệu (data budget).
 
@@ -101,6 +101,24 @@ B_coarse ∝ n_coarse^0.5 × (1 + SW2(T_coarse, Q_proxy) / SW2_avg)
 ```
 Sau đó budget coarse được chia proportional xuống fine clusters bằng capped largest-remainder rounding, đảm bảo số mẫu chọn ra bằng đúng target budget.
 
+### Published supplementary baselines
+
+Ba baseline này dùng cùng CLIP embeddings, train/eval protocol, budgets, seeds như các method CAWOT-CM. Mục tiêu là bổ sung comparison có paper rõ ràng trước khi claim cho workshop.
+
+**CLIPScore filtering** ([Hessel et al., EMNLP 2021](https://aclanthology.org/2021.emnlp-main.595/)): chọn top-B sample theo độ khớp image-text:
+```
+score_i = cos(z_v_i, z_t_i)
+```
+Đây là adaptation của CLIPScore từ caption evaluation sang data filtering; paper claim trong bài nên gọi là "CLIPScore filtering baseline", không gọi là original CLIPScore protocol.
+
+**SemDeDup** ([Abbas et al., 2023](https://arxiv.org/abs/2303.09540)): prune semantic near-duplicates trên embedding ghép image/text:
+```
+pair_i = normalize([sqrt(lambda_image) * z_v_i, sqrt(1-lambda_image) * z_t_i])
+```
+Trong mỗi image cluster, greedy giữ sample không quá giống các sample đã chọn (`max_similarity=0.95`), rồi fill để đảm bảo đúng budget. Default `keep=hard` ưu tiên điểm xa centroid joint embedding trước.
+
+**Clustered k-center** ([Sener & Savarese, ICLR 2018](https://iclr.cc/virtual/2018/poster/194)): k-center greedy trên image embeddings trong từng cluster. Điểm đầu tiên là sample gần centroid cluster nhất, sau đó lặp lại chọn sample có khoảng cách nhỏ nhất tới tập đã chọn là lớn nhất.
+
 ### Tóm tắt method matrix
 
 | Component | random | v0 | v0_proto | v1 | v2 | **v2_1** |
@@ -111,6 +129,12 @@ Sau đó budget coarse được chia proportional xuống fine clusters bằng c
 | Dùng text embedding | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
 | Q_proxy | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
 | Chọn trong cluster | global random | xa centroid | gần centroid | facility location | facility location | **prototype-conditioned FL** |
+
+| Supplementary baseline | Paper source | Dùng text | Cluster | Chọn mẫu |
+|---|---|---:|---:|---|
+| `clipscore` | Hessel et al. 2021 | ✓ | ✗ | top image-text cosine |
+| `semdedup` | Abbas et al. 2023 | ✓ | ✓ | semantic dedup + exact-budget fill |
+| `k_center` | Sener & Savarese 2018 | ✗ | ✓ | greedy max-min image coverage |
 
 ---
 
@@ -139,6 +163,7 @@ Cho V0/V1 sanity + sweep: **5 shards (~65K cặp)** là đủ. Full-1M chỉ c�
 4. **Sweep đầy đủ**:
    - Baselines đã có: random, v0, v0_proto, v1, v2
    - **Sweep mới**: `v2_1` add-on để so sánh với baseline results trong `result/`
+   - **Supplementary baselines**: `clipscore`, `semdedup`, `k_center` chạy sau khi smoke riêng pass
    - **Budgets**: 5%, 10%, 20%, 30%, 40%, 50% (6) — full scaling-law range của plan Part B2
    - **Seeds**: 42, 1, 2 (3) — error bars (plan Tuần 4-5)
    - V2.1 add-on: **18 fine-tune runs** (6 budgets × 3 seeds)
@@ -231,6 +256,9 @@ python scripts/run_sweep.py --config configs/smoke_v2_1.yaml
 # Diagnose old V2 vs V2.1 signals after embeddings + qproxy cache exist
 python scripts/diagnose_v2.py --config config.yaml
 
+# Smoke test published supplementary baselines: 3 methods × 5% budget × seed 42 × 1 epoch
+python scripts/run_sweep.py --config configs/smoke_published_baselines.yaml
+
 # Optional tuning grid; each combo writes a distinct method label in records.csv
 python scripts/run_v2_1_grid.py --config config.yaml \
   --alphas 0.6,0.75,0.9 --lambdas 0.5,0.7,0.9 \
@@ -270,6 +298,11 @@ python scripts/run_sweep.py --config config.yaml
    - `outputs/diagnostic/image_grid_v0_vs_proto.png` — **hình minh họa V0 vs V0_proto 16 ảnh**, evidence trực quan cho paper
    - `outputs/diagnostic/qproxy_quality.png` — pairwise sim hist + PCA effective dim
    - `outputs/diagnostic/qproxy_themes.txt` — 20 KMeans themes với example queries (defensive against reviewer skeptical về Q_proxy quality)
+
+4. **Smoke published baselines**: `python scripts/run_sweep.py --config configs/smoke_published_baselines.yaml`
+   - Output: `outputs_smoke_published_baselines/eval/records.csv`
+   - Pass criteria: có đủ `clipscore`, `semdedup`, `k_center`, mỗi method có `mean_R@1`, không mismatch budget.
+   - Chỉ tạo full supplementary config sau khi smoke này pass.
 
 ### Multi-session strategy
 
@@ -311,6 +344,7 @@ coreset.v2_1.k_fine: 10
 coreset.v2_1.num_projections: 128
 coreset.v2_1.selection_alpha: 0.75
 coreset.v2_1.lambda_image: 0.7
+coreset.published_baselines.semdedup.max_similarity: 0.95
 qproxy.queries_json_path: ".../queries.json"   # downloaded by setup_qproxy.py
 qproxy.cache_path: ".../qproxy_clip_text_emb.npy"
 train.seeds: [42, 1, 2]      # error bars (plan-faithful)
@@ -332,13 +366,15 @@ cawot-cm-v0/
 │   ├── cluster.py               # FAISS k-means spherical
 │   ├── select.py                # random / v0 / v0_proto / v1 / v2 (+ helpers)
 │   ├── select_v2_1.py           # V2.1: SW2 + hierarchical + prototype-conditioned FL
+│   ├── select_published_baselines.py # CLIPScore, SemDeDup, k-center
 │   ├── qproxy.py                # Q_proxy loading + CLIP text re-encoding (V2/V2.1)
 │   ├── train.py                 # train_on_dataset (CLIP last-4-layer + InfoNCE)
 │   ├── eval.py                  # image-text retrieval R@k + per-category split
 │   └── utils.py
 ├── configs/
 │   ├── smoke.yaml               # smoke-test config (V2 only, 5% × 1 seed × 1 epoch)
-│   └── smoke_v2_1.yaml          # smoke-test config for V2.1
+│   ├── smoke_v2_1.yaml          # smoke-test config for V2.1
+│   └── smoke_published_baselines.yaml # smoke-test config for supplementary baselines
 ├── scripts/
 │   ├── setup_data.py            # ★ tải + giải nén N shards từ HF
 │   ├── setup_qproxy.py          # ★ tải Q_proxy queries.json từ Drive (V2/V2.1)
