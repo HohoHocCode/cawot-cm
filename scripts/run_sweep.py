@@ -1,4 +1,5 @@
-"""End-to-end coreset sweep: V0 family + V1, all budgets, all seeds, with
+"""End-to-end coreset sweep: V0 family + V1 + V2 + V2.1 + published baselines,
+all budgets/seeds, with
 per-category eval (goal / full / wentwrong) and resumability for multi-session
 Kaggle runs.
 
@@ -7,6 +8,11 @@ Methods (config coreset.methods):
   v0       - farthest-from-centroid (plan V0, diversity/atypical)
   v0_proto - closest-to-centroid (prototype/representative, diagnostic)
   v1       - cross-modal cost + facility location (plan V1, the method)
+  v2       - Gaussian-diag Wasserstein budget + V1 within-cluster selection
+  v2_1     - Sliced-Wasserstein hierarchical prototype-conditioned selection
+  clipscore - top-B CLIP image/text compatibility filtering
+  semdedup  - SemDeDup-style semantic duplicate pruning on joint embeddings
+  k_center  - clustered k-center greedy on image embeddings
 
 Output:
   outputs/eval/records.csv    : 1 row per (method, budget, seed, category)
@@ -30,12 +36,18 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.cluster import kmeans_faiss
+from src.cluster import hierarchical_kmeans_faiss, kmeans_faiss
 from src.data import TrainPoolDataset, build_pool, make_train_val_split
 from src.embed import extract_image_text_embeddings, load_clip
 from src.eval import evaluate_val_split
 from src.qproxy import load_or_encode_qproxy
 from src.select import select_random, select_v0, select_v0_proto, select_v1, select_v2
+from src.select_published_baselines import (
+    select_clipscore,
+    select_clustered_k_center,
+    select_semdedup,
+)
+from src.select_v2_1 import select_v2_1
 from src.train import train_on_dataset
 from src.utils import ensure_dir, get_device, load_config, set_seed, setup_logger
 
@@ -47,20 +59,86 @@ RECORD_FIELDS = [
 ]
 
 
-def select_coreset(method, n_train, b, zv, zt, centroids, assignments, seed,
-                   q_proxy_emb=None, v2_alpha=0.5):
+def method_record_name(method: str, cfg: dict) -> str:
+    """Stable record/run label, including V2.1 hyperparam tags when provided."""
+    if method != "v2_1":
+        return method
+    tag = cfg["coreset"].get("v2_1", {}).get("tag")
+    if not tag:
+        return method
+    safe = "".join(ch if ch.isalnum() or ch in ("_", "-") else "_" for ch in str(tag))
+    return f"v2_1_{safe}"
+
+
+def select_coreset(
+    method,
+    n_train,
+    b,
+    zv,
+    zt,
+    centroids,
+    assignments,
+    seed,
+    *,
+    q_proxy_emb=None,
+    v2_alpha=0.5,
+    hier=None,
+    v2_1_alpha=0.75,
+    v2_1_lambda_image=0.7,
+    v2_1_num_projections=128,
+    semdedup_lambda_image=0.5,
+    semdedup_max_similarity=0.95,
+    semdedup_keep="hard",
+):
     if method == "random":
         return select_random(n_train, b, seed=seed)
     if method == "v0":
         return select_v0(zv, centroids, assignments, b, seed=seed)
     if method == "v0_proto":
         return select_v0_proto(zv, centroids, assignments, b, seed=seed)
+    if method == "clipscore":
+        return select_clipscore(zv, zt, b, seed=seed)
+    if method == "semdedup":
+        return select_semdedup(
+            zv,
+            zt,
+            centroids,
+            assignments,
+            b,
+            seed=seed,
+            lambda_image=semdedup_lambda_image,
+            max_similarity=semdedup_max_similarity,
+            keep=semdedup_keep,
+        )
+    if method == "k_center":
+        return select_clustered_k_center(zv, centroids, assignments, b, seed=seed)
     if method == "v1":
         return select_v1(zv, zt, centroids, assignments, b, seed=seed)
     if method == "v2":
         if q_proxy_emb is None:
             raise ValueError("V2 needs q_proxy_emb (set qproxy.queries_json_path in config + run setup_qproxy.py)")
         return select_v2(zv, zt, centroids, assignments, q_proxy_emb, b, alpha=v2_alpha, seed=seed)
+    if method == "v2_1":
+        if q_proxy_emb is None:
+            raise ValueError("V2.1 needs q_proxy_emb (set qproxy.queries_json_path in config + run setup_qproxy.py)")
+        if hier is None:
+            raise ValueError("V2.1 needs hierarchical cluster state")
+        return select_v2_1(
+            zv=zv,
+            zt=zt,
+            coarse_centroids=hier["coarse_centroids"],
+            coarse_assignments=hier["coarse_assignments"],
+            fine_centroids=hier["fine_centroids"],
+            fine_assignments=hier["fine_assignments"],
+            fine_valid=hier["fine_valid"],
+            q_proxy_emb=q_proxy_emb,
+            budget=b,
+            alpha=v2_1_alpha,
+            lambda_image=v2_1_lambda_image,
+            v2_alpha=v2_alpha,
+            num_projections=v2_1_num_projections,
+            seed=seed,
+        )
     raise ValueError(f"unknown method: {method}")
 
 
@@ -101,13 +179,36 @@ def main():
 
     budgets = cfg["coreset"]["budgets"]
     methods = cfg["coreset"]["methods"]
+    record_methods = [method_record_name(m, cfg) for m in methods]
     seeds = cfg["train"]["seeds"]
     keep_ckpts = cfg["train"].get("keep_checkpoints", False)
-    needs_text = ("v1" in methods) or ("v2" in methods)
-    needs_qproxy = "v2" in methods
+    needs_text = any(
+        m in methods for m in ("v1", "v2", "v2_1", "clipscore", "semdedup")
+    )
+    needs_qproxy = any(m in methods for m in ("v2", "v2_1"))
     v2_alpha = float(cfg["coreset"].get("v2_alpha", 0.5))
+    v2_1_cfg = cfg["coreset"].get("v2_1", {})
+    v2_1_k_coarse = int(v2_1_cfg.get("k_coarse", 20))
+    v2_1_k_fine = int(v2_1_cfg.get("k_fine", 10))
+    v2_1_alpha = float(v2_1_cfg.get("selection_alpha", 0.75))
+    v2_1_lambda_image = float(v2_1_cfg.get("lambda_image", 0.7))
+    v2_1_num_projections = int(v2_1_cfg.get("num_projections", 128))
+    published_cfg = cfg["coreset"].get("published_baselines", {})
+    semdedup_cfg = published_cfg.get("semdedup", {})
+    semdedup_lambda_image = float(semdedup_cfg.get("lambda_image", 0.5))
+    semdedup_max_similarity = float(semdedup_cfg.get("max_similarity", 0.95))
+    semdedup_keep = str(semdedup_cfg.get("keep", "hard"))
     logger.info(f"methods={methods}  budgets={budgets}  seeds={seeds}  "
                 f"needs_text={needs_text}  needs_qproxy={needs_qproxy}  v2_alpha={v2_alpha}")
+    if record_methods != methods:
+        logger.info(f"record method labels={record_methods}")
+    if "v2_1" in methods:
+        logger.info(
+            "v2_1 config: "
+            f"k_coarse={v2_1_k_coarse} k_fine={v2_1_k_fine} "
+            f"selection_alpha={v2_1_alpha} lambda_image={v2_1_lambda_image} "
+            f"num_projections={v2_1_num_projections}"
+        )
 
     # === Fixed setup ===
     anns, shard_roots = build_pool(
@@ -152,7 +253,7 @@ def main():
         if not needs_text:
             text_emb = None
 
-    # === Q_proxy text embeddings (V2 only) — encode with CLIP-B/16 text encoder ===
+    # === Q_proxy text embeddings (V2/V2.1) — encode with CLIP-B/16 text encoder ===
     # We re-encode the queries even if friend has a precomputed EVA02 version,
     # because pool's text embeddings are CLIP-512d and W2 must be in same space.
     q_proxy_emb = None
@@ -214,37 +315,61 @@ def main():
     # === Sweep ===
     for seed in seeds:
         set_seed(seed)
-        centroids, assignments = kmeans_faiss(
-            train_zv,
-            k=cfg["cluster"]["k"],
-            niter=cfg["cluster"]["niter"],
-            spherical=cfg["cluster"]["spherical"],
-            use_gpu=cfg["cluster"]["use_gpu"],
-            seed=seed,
+        needs_flat = any(
+            m in methods for m in ("v0", "v0_proto", "v1", "v2", "semdedup", "k_center")
         )
+        centroids = assignments = None
+        if needs_flat:
+            centroids, assignments = kmeans_faiss(
+                train_zv,
+                k=cfg["cluster"]["k"],
+                niter=cfg["cluster"]["niter"],
+                spherical=cfg["cluster"]["spherical"],
+                use_gpu=cfg["cluster"]["use_gpu"],
+                seed=seed,
+            )
+        hier = None
+        if "v2_1" in methods:
+            hier = hierarchical_kmeans_faiss(
+                train_zv,
+                k_coarse=v2_1_k_coarse,
+                k_fine=v2_1_k_fine,
+                niter=cfg["cluster"]["niter"],
+                spherical=cfg["cluster"]["spherical"],
+                use_gpu=cfg["cluster"]["use_gpu"],
+                seed=seed,
+            )
         for budget in budgets:
             b = int(round(budget * n_train))
-            for method in methods:
-                key = (method, float(budget), int(seed))
+            for method, record_method in zip(methods, record_methods):
+                key = (record_method, float(budget), int(seed))
                 if key in done:
-                    logger.info(f"[skip] {method} b={budget} s={seed} already done")
+                    logger.info(f"[skip] {record_method} b={budget} s={seed} already done")
                     continue
                 local_idx = select_coreset(
                     method, n_train, b, train_zv, train_zt, centroids, assignments, seed,
-                    q_proxy_emb=q_proxy_emb, v2_alpha=v2_alpha,
+                    q_proxy_emb=q_proxy_emb,
+                    v2_alpha=v2_alpha,
+                    hier=hier,
+                    v2_1_alpha=v2_1_alpha,
+                    v2_1_lambda_image=v2_1_lambda_image,
+                    v2_1_num_projections=v2_1_num_projections,
+                    semdedup_lambda_image=semdedup_lambda_image,
+                    semdedup_max_similarity=semdedup_max_similarity,
+                    semdedup_keep=semdedup_keep,
                 )
                 pool_idx = train_idx[local_idx]
                 train_ds = TrainPoolDataset(
                     anns, shard_roots, image_transform=preprocess,
                     tokenizer=tokenizer, indices=pool_idx,
                 )
-                run_name = f"{method}_b{int(budget * 100)}_s{seed}"
+                run_name = f"{record_method}_b{int(budget * 100)}_s{seed}"
                 ckpt = train_on_dataset(cfg, train_ds, run_name)
                 m_dict = evaluate_val_split(cfg, val_dataset, ckpt, run_name)
                 rows = []
                 for cat, m in m_dict.items():
                     rows.append({
-                        "method": method, "budget": float(budget), "seed": int(seed),
+                        "method": record_method, "budget": float(budget), "seed": int(seed),
                         "category": cat, "n_queries": m["n_pairs"],
                         "t2i_R@1": m.get("t2i_R@1", ""), "i2t_R@1": m.get("i2t_R@1", ""),
                         "t2i_R@5": m.get("t2i_R@5", ""), "i2t_R@5": m.get("i2t_R@5", ""),
@@ -270,7 +395,7 @@ def main():
     summary["zeroshot"] = {r["category"]: round(float(r["mean_R@1"]), 3) for r in zs_rows if r["mean_R@1"]}
 
     categories = ["overall"] + sorted(set(val_dataset.categories.tolist()))
-    for method in methods:
+    for method in record_methods:
         summary[method] = {}
         for budget in budgets:
             summary[method][f"{budget}"] = {}
@@ -294,11 +419,11 @@ def main():
         if category not in categories:
             continue
         print(f"\n[{category}]")
-        header = f"{'budget':>7} | " + " | ".join(f"{m:>14}" for m in methods)
+        header = f"{'budget':>7} | " + " | ".join(f"{m:>14}" for m in record_methods)
         print(header); print("-" * len(header))
         for budget in budgets:
             cells = []
-            for m in methods:
+            for m in record_methods:
                 s = summary[m].get(f"{budget}", {}).get(category)
                 cells.append(f"{s['mean_R@1_mean']:.2f}±{s['mean_R@1_std']:.2f}" if s else "    -    ")
             print(f"{budget:>6.0%} | " + " | ".join(f"{c:>14}" for c in cells))

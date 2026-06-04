@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import os
 import random
@@ -5,13 +7,16 @@ import sys
 from pathlib import Path
 
 import numpy as np
-import torch
 import yaml
 
 
 def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
+    try:
+        import torch
+    except ImportError:
+        return
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
@@ -41,6 +46,8 @@ def ensure_dir(path: str | Path) -> Path:
 
 
 def get_device(preferred: str = "cuda") -> torch.device:
+    import torch
+
     if preferred == "cuda" and torch.cuda.is_available():
         return torch.device("cuda")
     return torch.device("cpu")

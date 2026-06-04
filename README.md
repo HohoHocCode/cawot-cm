@@ -1,4 +1,4 @@
-# CAWOT-CM — Coreset Selection cho Text-based Person Anomaly Retrieval (V0 + V1 + V2)
+# CAWOT-CM — Coreset Selection cho Text-based Person Anomaly Retrieval (V0 + V1 + V2 + V2.1 + published baselines)
 
 Codebase cho phần **coreset selection** của paper CAWOT-CM, chạy trên benchmark **PAB ECCV'26 Workshop Track 4** (Pedestrian Anomaly Behavior). Mục tiêu: chọn một tập con (coreset) nhỏ từ pool ảnh-caption synthetic sao cho fine-tune trên coreset đó cho kết quả retrieval tốt nhất với cùng một ngân sách dữ liệu (data budget).
 
@@ -82,16 +82,59 @@ với α = 0.5 (plan default, `coreset.v2_alpha`):
 
 Largest-remainder rounding, capped at cluster size. Final coreset same selection logic V1 (facility location on cross-modal cost) within each cluster.
 
+### V2.1 — Sliced-Wasserstein hierarchical prototype-conditioned coreset (current method)
+
+V2.1 là redesign theo plan mới sau khi V2 cũ không vượt V0_proto/V1 ổn định. Nó giữ tinh thần OT/Q_proxy nhưng thay các phần yếu:
+
+1. **Gaussian-diag W2 → Sliced Wasserstein** ở cấp coarse cluster. Với `L=128` random projections, mỗi projection tính exact empirical 1D W2 rồi lấy trung bình. Mục tiêu là giảm distance concentration trong CLIP 512-d và làm tín hiệu W_k rõ hơn.
+2. **Flat K=150 → hierarchical k-means**: `K1=20` coarse clusters và `K2=10` fine clusters trong mỗi coarse group. Budget được allocate ở coarse level, selection ở fine level.
+3. **Rank-normalized image/text/alignment cost → weighted image+text similarity**: bỏ alignment rank cost, dùng `lambda_image` và `1-lambda_image` cho image/text cosine similarity. Grid-search hook có sẵn qua `scripts/run_v2_1_grid.py`.
+4. **Pure facility location → prototype-conditioned submodular greedy**: trong mỗi fine cluster, chọn mẫu vừa trung tâm vừa phủ đa dạng:
+```
+gain(j | S) = alpha * proto_score(j) + (1-alpha) * mean_i max(sim(i,j)-coverage_i, 0)
+```
+`alpha=1` khôi phục hành vi V0_proto, `alpha=0` là facility location thuần. Default plan: `alpha=0.75`.
+
+Budget V2.1:
+```
+B_coarse ∝ n_coarse^0.5 × (1 + SW2(T_coarse, Q_proxy) / SW2_avg)
+```
+Sau đó budget coarse được chia proportional xuống fine clusters bằng capped largest-remainder rounding, đảm bảo số mẫu chọn ra bằng đúng target budget.
+
+### Published supplementary baselines
+
+Ba baseline này dùng cùng CLIP embeddings, train/eval protocol, budgets, seeds như các method CAWOT-CM. Mục tiêu là bổ sung comparison có paper rõ ràng trước khi claim cho workshop.
+
+**CLIPScore filtering** ([Hessel et al., EMNLP 2021](https://aclanthology.org/2021.emnlp-main.595/)): chọn top-B sample theo độ khớp image-text:
+```
+score_i = cos(z_v_i, z_t_i)
+```
+Đây là adaptation của CLIPScore từ caption evaluation sang data filtering; paper claim trong bài nên gọi là "CLIPScore filtering baseline", không gọi là original CLIPScore protocol.
+
+**SemDeDup** ([Abbas et al., 2023](https://arxiv.org/abs/2303.09540)): prune semantic near-duplicates trên embedding ghép image/text:
+```
+pair_i = normalize([sqrt(lambda_image) * z_v_i, sqrt(1-lambda_image) * z_t_i])
+```
+Trong mỗi image cluster, greedy giữ sample không quá giống các sample đã chọn (`max_similarity=0.95`), rồi fill để đảm bảo đúng budget. Default `keep=hard` ưu tiên điểm xa centroid joint embedding trước.
+
+**Clustered k-center** ([Sener & Savarese, ICLR 2018](https://iclr.cc/virtual/2018/poster/194)): k-center greedy trên image embeddings trong từng cluster. Điểm đầu tiên là sample gần centroid cluster nhất, sau đó lặp lại chọn sample có khoảng cách nhỏ nhất tới tập đã chọn là lớn nhất.
+
 ### Tóm tắt method matrix
 
-| Component | random | v0 | v0_proto | v1 | **v2** |
-|---|---|---|---|---|---|
-| Cluster (image) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Budget ∝ size | ✓ | ✓ | ✓ | ✓ | ✗ |
-| Budget Wasserstein-aware | ✗ | ✗ | ✗ | ✗ | **✓** |
-| Dùng text embedding | ✗ | ✗ | ✗ | ✓ | ✓ |
-| Q_proxy | ✗ | ✗ | ✗ | ✗ | **✓** |
-| Chọn trong cluster | — (toàn cục) | xa centroid | gần centroid | facility location | facility location |
+| Component | random | v0 | v0_proto | v1 | v2 | **v2_1** |
+|---|---|---|---|---|---|---|
+| Cluster (image) | ✗ | ✓ | ✓ | ✓ | ✓ | **hierarchical** |
+| Budget ∝ size | global | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Budget Wasserstein-aware | ✗ | ✗ | ✗ | ✗ | Gaussian-diag | **Sliced W2** |
+| Dùng text embedding | ✗ | ✗ | ✗ | ✓ | ✓ | ✓ |
+| Q_proxy | ✗ | ✗ | ✗ | ✗ | ✓ | ✓ |
+| Chọn trong cluster | global random | xa centroid | gần centroid | facility location | facility location | **prototype-conditioned FL** |
+
+| Supplementary baseline | Paper source | Dùng text | Cluster | Chọn mẫu |
+|---|---|---:|---:|---|
+| `clipscore` | Hessel et al. 2021 | ✓ | ✗ | top image-text cosine |
+| `semdedup` | Abbas et al. 2023 | ✓ | ✓ | semantic dedup + exact-budget fill |
+| `k_center` | Sener & Savarese 2018 | ✗ | ✓ | greedy max-min image coverage |
 
 ---
 
@@ -117,12 +160,14 @@ Cho V0/V1 sanity + sweep: **5 shards (~65K cặp)** là đủ. Full-1M chỉ c�
 1. **Pool**: random-sample `sample_size = 50,000` cặp từ các shard đã tải (seed cố định).
 2. **Embeddings**: trích CLIP ViT-B/16 (OpenAI) image + text embedding (512-d, L2-normalized). Cache lại.
 3. **Val set (FIXED)**: hold-out `val_size = 5,000` cặp làm tập eval retrieval. **Giữ nguyên qua mọi method/budget/seed** → số liệu so sánh trực tiếp được. → train pool = 45,000.
-4. **Sweep đầy đủ** (plan-faithful, V0+V1+V2):
-   - **Methods**: random, v0, v0_proto, v1, **v2** (5) — V2 là method chính paper
+4. **Sweep đầy đủ**:
+   - Baselines đã có: random, v0, v0_proto, v1, v2
+   - **Sweep mới**: `v2_1` add-on để so sánh với baseline results trong `result/`
+   - **Supplementary baselines**: `clipscore`, `semdedup`, `k_center` chạy sau khi smoke riêng pass
    - **Budgets**: 5%, 10%, 20%, 30%, 40%, 50% (6) — full scaling-law range của plan Part B2
    - **Seeds**: 42, 1, 2 (3) — error bars (plan Tuần 4-5)
-   - Tổng: **90 fine-tune runs** với error bars chuẩn
-5. **Cluster**: cho mỗi seed, k-means spherical với `k=150` trên train_zv.
+   - V2.1 add-on: **18 fine-tune runs** (6 budgets × 3 seeds)
+5. **Cluster**: baseline dùng flat k-means spherical `k=150`; V2.1 dùng hierarchical k-means `K1=20`, `K2=10`.
 6. **Fine-tune**: unfreeze 4 transformer block cuối (image + text) + projection, InfoNCE đối xứng, 3 epoch, lr 1e-5, batch 96, AMP. (~28% params trainable.)
 7. **Eval**: image-text retrieval R@1/5/10 hai chiều trên val 5K (xem §5), **kèm per-category breakdown** (goal / full / wentwrong).
 8. **Resumability**: `run_sweep.py` đọc `records.csv` lúc khởi động, skip combo đã làm → an toàn khi Kaggle session timeout, multi-session free.
@@ -200,6 +245,29 @@ python scripts/setup_data.py --output ./pab_data --num-shards 5
 python scripts/run_sweep.py --config config.yaml
 ```
 
+### V2.1 smoke / diagnostic / grid
+```bash
+# Q_proxy first
+python scripts/setup_qproxy.py --output ./qproxy --only-queries
+
+# Smoke test V2.1 only: 5% budget × seed 42 × 1 epoch
+python scripts/run_sweep.py --config configs/smoke_v2_1.yaml
+
+# Diagnose old V2 vs V2.1 signals after embeddings + qproxy cache exist
+python scripts/diagnose_v2.py --config config.yaml
+
+# Smoke test published supplementary baselines: 3 methods × 5% budget × seed 42 × 1 epoch
+python scripts/run_sweep.py --config configs/smoke_published_baselines.yaml
+
+# Optional tuning grid; each combo writes a distinct method label in records.csv
+python scripts/run_v2_1_grid.py --config config.yaml \
+  --alphas 0.6,0.75,0.9 --lambdas 0.5,0.7,0.9 \
+  --budgets 0.05,0.1,0.2 --seeds 42 --epochs 1
+
+# Full V2.1 add-on sweep: 6 budgets × 3 seeds = 18 runs (~12-15h on Kaggle P100)
+python scripts/run_sweep.py --config config.yaml
+```
+
 ### Output
 - `outputs/eval/summary.json` — per (method, budget): `mean_R@1_mean`, `mean_R@1_std`, `n_seeds`
 - `outputs/eval/records.csv` — 1 dòng mỗi (method, budget, seed) với đầy đủ t2i/i2t R@k
@@ -207,42 +275,49 @@ python scripts/run_sweep.py --config config.yaml
 
 ---
 
-## 8. Số lần run & multi-session (Hướng 2.5, workshop-scale)
+## 8. Số lần run & multi-session (V2.1 add-on)
 
-**Cấu hình mặc định** (Hướng 2.5 — drop v0 farthest vì đã biết tệ nhất từ prev run):
-- 4 methods × 6 budgets × 3 seeds = **72 fine-tune runs**
-- + 1 zero-shot eval + Q_proxy text encoding (~10 sec)
-- Total compute: ~16 h trên Kaggle P100
-
-`v0` (farthest-from-centroid) cited từ run 1-seed cũ làm negative control trong ablation appendix — không waste compute multi-seed lên method đã biết là loser.
+**Cấu hình mặc định hiện tại**:
+- 1 method (`v2_1`) × 6 budgets × 3 seeds = **18 fine-tune runs**
+- + 1 zero-shot eval + Q_proxy text encoding nếu chưa cache
+- Baseline Random/V0_proto/V1/V2 đã có trong `result/`; chỉ rerun nếu đổi backbone/split/training setup.
+- Estimate thực tế cho full V2.1 add-on trên Kaggle P100: **~12-15h** gồm hierarchical clustering, SW2 selection, training, eval. Mini-grid khuyến nghị (`2 alpha × 2 lambda × 2 budgets × 1 seed`) thêm khoảng **~5h**.
 
 ### Pre-flight (BẮT BUỘC trước khi launch full sweep)
 
-1. **Smoke test V2** (~25 min): `python scripts/run_sweep.py --config configs/smoke.yaml`
-   - Verify V2 pipeline end-to-end (Q_proxy load + W2 compute + budget alloc + training + eval)
-   - Output: `outputs_smoke/eval/summary.json`. Sanity: V2 R@1 > zero-shot R@1.
+1. **Smoke test V2.1** (~25-30 min): `python scripts/run_sweep.py --config configs/smoke_v2_1.yaml`
+   - Verify V2.1 pipeline end-to-end (Q_proxy load + SW2 compute + hierarchical budget alloc + training + eval)
+   - Output: `outputs_smoke_v2_1/eval/summary.json`. Sanity: V2.1 R@1 > zero-shot R@1.
    - **Tốn duy nhất ~18 min embedding extraction** (cached cho diagnostic + full sweep luôn — không tốn lại).
 
-2. **Diagnostic** (~5 min, sau smoke): `python scripts/diagnose_selection.py --config config.yaml`
+2. **V2 diagnosis** (~5-10 min, sau smoke): `python scripts/diagnose_v2.py --config config.yaml`
+   - `outputs/diagnostic/v2_diagnosis.md` — old V2 vs V2.1 W spread, budget shift, cluster sizes, Q_proxy quality
+
+3. **Selection visuals** (optional): `python scripts/diagnose_selection.py --config config.yaml`
    - `outputs/diagnostic/selection_pca.png` — 2D PCA scatter, 4 methods × selection
    - `outputs/diagnostic/image_grid_v0_vs_proto.png` — **hình minh họa V0 vs V0_proto 16 ảnh**, evidence trực quan cho paper
    - `outputs/diagnostic/qproxy_quality.png` — pairwise sim hist + PCA effective dim
    - `outputs/diagnostic/qproxy_themes.txt` — 20 KMeans themes với example queries (defensive against reviewer skeptical về Q_proxy quality)
 
+4. **Smoke published baselines**: `python scripts/run_sweep.py --config configs/smoke_published_baselines.yaml`
+   - Output: `outputs_smoke_published_baselines/eval/records.csv`
+   - Pass criteria: có đủ `clipscore`, `semdedup`, `k_center`, mỗi method có `mean_R@1`, không mismatch budget.
+   - Chỉ tạo full supplementary config sau khi smoke này pass.
+
 ### Multi-session strategy
 
-`run_sweep.py` resumable qua `records.csv`. Mỗi Kaggle session ~5.5h hiệu dụng (limit 9h an toàn).
+`run_sweep.py` resumable qua `records.csv`.
 
 **Recommend chia 3 session**:
 | Session | Combos chạy | Time |
 |---|---|---|
-| 1 | seed=42 (~24 runs) + smoke + diagnostic | ~5.5h |
-| 2 | seed=1 (~24 runs) | ~5.5h |
-| 3 | seed=2 (~24 runs) + final plots | ~5.5h |
+| 1 | smoke + diagnostic + seed=42 (6 V2.1 runs) | ~4-5h |
+| 2 | seed=1 (6 V2.1 runs) | ~4h |
+| 3 | seed=2 (6 V2.1 runs) + final plots | ~4h |
 
 Giữa session: **Save Version** → session sau **Add Data** attach previous output → copy `records.csv` về `/kaggle/working/outputs/eval/`. Notebook cell 5 có template instructions.
 
-**Multi-session — không lo timeout**: `run_sweep.py` resumable qua `records.csv`. Chỉ cần Kaggle quota tuần ≥ 17h (Kaggle cho 30h GPU/tuần).
+**Multi-session — không lo timeout**: `run_sweep.py` resumable qua `records.csv`.
 
 Có 2 cách chia session:
 
@@ -251,7 +326,7 @@ Có 2 cách chia session:
 | **A. Tự động** | Giữ `train.seeds: [42, 1, 2]`. Mỗi session restart cell "Run sweep" → tiếp tục từ chỗ dừng. | Đơn giản, không cần đụng config. |
 | **B. Thủ công** | Session 1: `seeds: [42]`. Session 2: `seeds: [1]`. Session 3: `seeds: [2]`. | Kiểm soát chính xác mỗi session làm gì. |
 
-Output sau khi xong: `records.csv` chứa **4 method × 6 budget × 3 seed × 4 category = 288 rows** (cộng zero-shot rows). `summary.json` aggregate theo mean ± std. Quá đủ rigor cho cả workshop lẫn conference.
+Output sau khi xong: `records.csv` có thêm **1 method × 6 budget × 3 seed × 4 category = 72 V2.1 rows** (cộng zero-shot rows). So sánh với baseline numbers trong `result/` hoặc rerun baselines khi cần fairness tuyệt đối.
 
 ---
 
@@ -262,8 +337,14 @@ data.sample_size: 50000      # pool size lấy từ shard đã tải
 data.val_size: 5000          # gallery hold-out (lớn → tránh bão hòa)
 cluster.k: 150               # ~ sqrt(N/2) cho 45K pool
 coreset.budgets: [0.05, 0.10, 0.20, 0.30, 0.40, 0.50]  # full scaling-law range
-coreset.methods: [random, v0_proto, v1, v2]   # Hướng 2.5 — drop v0 (cited from prev 1-seed run)
+coreset.methods: [v2_1]        # add-on sweep; baseline results are in result/
 coreset.v2_alpha: 0.5         # exponent in B_k ∝ n_k^α × (1+W_k/W_avg)
+coreset.v2_1.k_coarse: 20
+coreset.v2_1.k_fine: 10
+coreset.v2_1.num_projections: 128
+coreset.v2_1.selection_alpha: 0.75
+coreset.v2_1.lambda_image: 0.7
+coreset.published_baselines.semdedup.max_similarity: 0.95
 qproxy.queries_json_path: ".../queries.json"   # downloaded by setup_qproxy.py
 qproxy.cache_path: ".../qproxy_clip_text_emb.npy"
 train.seeds: [42, 1, 2]      # error bars (plan-faithful)
@@ -284,17 +365,23 @@ cawot-cm-v0/
 │   ├── embed.py                 # extract image / image+text CLIP embeddings
 │   ├── cluster.py               # FAISS k-means spherical
 │   ├── select.py                # random / v0 / v0_proto / v1 / v2 (+ helpers)
-│   ├── qproxy.py                # Q_proxy loading + CLIP text re-encoding (V2)
+│   ├── select_v2_1.py           # V2.1: SW2 + hierarchical + prototype-conditioned FL
+│   ├── select_published_baselines.py # CLIPScore, SemDeDup, k-center
+│   ├── qproxy.py                # Q_proxy loading + CLIP text re-encoding (V2/V2.1)
 │   ├── train.py                 # train_on_dataset (CLIP last-4-layer + InfoNCE)
 │   ├── eval.py                  # image-text retrieval R@k + per-category split
 │   └── utils.py
 ├── configs/
-│   └── smoke.yaml               # smoke-test config (V2 only, 5% × 1 seed × 1 epoch)
+│   ├── smoke.yaml               # smoke-test config (V2 only, 5% × 1 seed × 1 epoch)
+│   ├── smoke_v2_1.yaml          # smoke-test config for V2.1
+│   └── smoke_published_baselines.yaml # smoke-test config for supplementary baselines
 ├── scripts/
 │   ├── setup_data.py            # ★ tải + giải nén N shards từ HF
-│   ├── setup_qproxy.py          # ★ tải Q_proxy queries.json từ Drive (V2 only)
+│   ├── setup_qproxy.py          # ★ tải Q_proxy queries.json từ Drive (V2/V2.1)
+│   ├── diagnose_v2.py           # ★ đo W spread, budget shift, Q_proxy quality
+│   ├── run_v2_1_grid.py         # ★ grid-search alpha/lambda_image cho V2.1
 │   ├── diagnose_selection.py    # ★ pre-sweep viz (PCA + image grid + Q_proxy quality)
-│   └── run_sweep.py             # ★ END-TO-END: V0 family + V1 + V2 sweep
+│   └── run_sweep.py             # ★ END-TO-END sweep incl. V2.1
 └── notebooks/
     └── kaggle_v0.ipynb          # ★ Kaggle template (clone → tải → sweep → plot)
 ```

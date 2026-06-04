@@ -28,31 +28,85 @@ logger = setup_logger("select")
 
 
 def select_random(n_total: int, budget: int, seed: int = 42) -> np.ndarray:
+    if budget < 0 or budget > n_total:
+        raise ValueError(f"budget must be in [0, {n_total}], got {budget}")
     rng = np.random.RandomState(seed)
     return np.sort(rng.choice(n_total, size=budget, replace=False)).astype(np.int64)
 
 
-def _proportional_budgets(cluster_sizes: np.ndarray, total_budget: int) -> np.ndarray:
-    """Allocate total_budget across clusters proportional to size.
+def _capped_largest_remainder(
+    weights: np.ndarray,
+    capacities: np.ndarray,
+    total_budget: int,
+) -> np.ndarray:
+    """Round weighted allocations while respecting per-bin capacity.
 
-    Largest-remainder rounding so allocations sum exactly to total_budget,
-    capped at each cluster's size.
+    The old V2 path capped only at the end. If a high-weight small cluster was
+    over-allocated, the final cap silently reduced the total selected count.
+    This helper redistributes capped mass until the allocation is exact, unless
+    the requested budget exceeds total capacity.
     """
-    sizes = cluster_sizes.astype(np.float64)
-    N = sizes.sum()
-    raw = sizes / N * total_budget
-    floor = np.floor(raw).astype(np.int64)
-    remainder = raw - floor
-    deficit = total_budget - floor.sum()
-    if deficit > 0:
-        order = np.argsort(-remainder)
+    capacities = capacities.astype(np.int64)
+    weights = weights.astype(np.float64)
+    if total_budget < 0:
+        raise ValueError(f"total_budget must be non-negative, got {total_budget}")
+    if total_budget > int(capacities.sum()):
+        raise ValueError(
+            f"total_budget={total_budget} exceeds total capacity={int(capacities.sum())}"
+        )
+    out = np.zeros_like(capacities, dtype=np.int64)
+    remaining = int(total_budget)
+    active = capacities > 0
+
+    while remaining > 0:
+        active_idx = np.where(active)[0]
+        if len(active_idx) == 0:
+            raise RuntimeError("no active capacity left while budget remains")
+
+        active_weights = weights[active_idx].copy()
+        if float(active_weights.sum()) <= 0:
+            active_weights = capacities[active_idx].astype(np.float64) - out[active_idx]
+
+        raw = active_weights / active_weights.sum() * remaining
+        add = np.floor(raw).astype(np.int64)
+        spare = capacities[active_idx] - out[active_idx]
+        add = np.minimum(add, spare)
+        out[active_idx] += add
+        remaining = int(total_budget - out.sum())
+
+        full = out >= capacities
+        active = (~full) & (capacities > 0)
+        if remaining == 0:
+            break
+
+        remainders = raw - np.floor(raw)
+        order = active_idx[np.argsort(-remainders)]
+        progressed = False
         for i in order:
-            if deficit == 0:
+            if remaining == 0:
                 break
-            if floor[i] < int(sizes[i]):
-                floor[i] += 1
-                deficit -= 1
-    return np.minimum(floor, sizes.astype(np.int64))
+            if out[i] < capacities[i]:
+                out[i] += 1
+                remaining -= 1
+                progressed = True
+        active = (out < capacities) & (capacities > 0)
+        if not progressed:
+            for i in np.where(active)[0]:
+                if remaining == 0:
+                    break
+                out[i] += 1
+                remaining -= 1
+                progressed = True
+        if not progressed:
+            raise RuntimeError("budget rounding made no progress")
+
+    return out
+
+
+def _proportional_budgets(cluster_sizes: np.ndarray, total_budget: int) -> np.ndarray:
+    """Allocate total_budget across clusters proportional to size."""
+    sizes = cluster_sizes.astype(np.float64)
+    return _capped_largest_remainder(sizes, cluster_sizes.astype(np.int64), total_budget)
 
 
 # -----------------------------------------------------------------------------
@@ -283,19 +337,7 @@ def wasserstein_aware_budgets(
     total = weights.sum()
     if total <= 0:
         return np.zeros_like(cluster_sizes)
-    raw = weights / total * total_budget
-    floor = np.floor(raw).astype(np.int64)
-    remainder = raw - floor
-    deficit = int(total_budget - floor.sum())
-    if deficit > 0:
-        order = np.argsort(-remainder)
-        for i in order:
-            if deficit == 0:
-                break
-            if floor[i] < int(sizes[i]):
-                floor[i] += 1
-                deficit -= 1
-    return np.minimum(floor, sizes.astype(np.int64))
+    return _capped_largest_remainder(weights, cluster_sizes.astype(np.int64), total_budget)
 
 
 def select_v2(

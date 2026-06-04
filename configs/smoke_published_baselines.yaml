@@ -1,0 +1,64 @@
+# Smoke-test config for paper-backed supplementary baselines.
+# Runs CLIPScore, SemDeDup, and clustered k-center at 5% budget, 1 seed, 1 epoch.
+
+seed: 42
+
+data:
+  image_root: "/kaggle/working/pab_data/images"
+  annotations_dir: "/kaggle/working/pab_data/annotations"
+  sample_size: 50000
+  val_size: 1000
+  image_size: 224
+  num_workers: 2
+
+embed:
+  model: "ViT-B-16"
+  pretrained: "openai"
+  batch_size: 128
+  device: "cuda"
+  output_dir: "/kaggle/working/outputs/embeddings"
+
+cluster:
+  k: 150
+  niter: 25
+  spherical: true
+  use_gpu: true
+  output_path: "/kaggle/working/outputs_smoke_published_baselines/clusters.npz"
+
+coreset:
+  budgets: [0.05]
+  methods: [clipscore, semdedup, k_center]
+  v2_alpha: 0.5
+  published_baselines:
+    semdedup:
+      lambda_image: 0.5
+      max_similarity: 0.95
+      keep: hard
+  output_dir: "/kaggle/working/outputs_smoke_published_baselines"
+
+qproxy:
+  queries_json_path: "/kaggle/working/qproxy/queries.json"
+  cache_path: "/kaggle/working/outputs/embeddings/qproxy_clip_text_emb.npy"
+
+train:
+  model: "ViT-B-16"
+  pretrained: "openai"
+  unfreeze_last_n_layers: 4
+  batch_size: 96
+  num_epochs: 1
+  lr: 1.0e-5
+  weight_decay: 0.1
+  warmup_steps: 50
+  temperature: 0.07
+  use_learned_temp: true
+  grad_accum_steps: 1
+  amp: true
+  output_dir: "/kaggle/working/outputs_smoke_published_baselines/checkpoints"
+  log_every: 25
+  seeds: [42]
+  keep_checkpoints: false
+
+eval:
+  batch_size: 128
+  k_values: [1, 5]
+  output_dir: "/kaggle/working/outputs_smoke_published_baselines/eval"

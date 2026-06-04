@@ -44,20 +44,35 @@ coreset:
   # Budget sweep matching the plan's scaling-law points exactly
   # (Part B2: 5/10/20/30/40/50%). Smooth curve from low to high budget.
   budgets: [0.05, 0.10, 0.20, 0.30, 0.40, 0.50]
-  # Methods compared in one sweep (Hướng 2.5):
-  #   random   - uniform baseline
-  #   v0_proto - closest-to-centroid (prototype / representative) — wins prev run
-  #   v1       - cross-modal cost + facility location [plan V1]
-  #   v2       - Wasserstein-aware budget + cross-modal facility location [plan V2]
-  # `v0` (farthest-from-centroid) dropped: known loser from prev 1-seed run,
-  # cited as negative-control baseline in ablation appendix.
-  methods: [random, v0_proto, v1, v2]
+  # V2.1 add-on sweep. Existing baseline numbers are already in result/; the
+  # V2.1 plan says not to waste compute rerunning Random/V0_proto/V1/V2 unless
+  # a fairness setup changes. Add those method names here only if you need a
+  # fresh all-method sweep.
+  methods: [v2_1]
   # V2 budget formula:  B_k ∝ n_k^alpha × (1 + W_k / W_avg).
   # alpha = 0.5 (plan default) — sub-linear scaling vs cluster size.
   v2_alpha: 0.5
+  # V2.1 redesign:
+  #   - hierarchical k-means: 20 coarse × 10 fine leaves
+  #   - coarse Sliced Wasserstein gap with 128 random projections
+  #   - prototype-conditioned submodular greedy with alpha=0.75
+  #   - image/text cost weighting with lambda_image=0.7, lambda_text=0.3
+  v2_1:
+    k_coarse: 20
+    k_fine: 10
+    num_projections: 128
+    selection_alpha: 0.75
+    lambda_image: 0.7
+  # Paper-backed supplementary baselines. These are not in the default method
+  # list until configs/smoke_published_baselines.yaml passes.
+  published_baselines:
+    semdedup:
+      lambda_image: 0.5
+      max_similarity: 0.95
+      keep: hard
   output_dir: "/kaggle/working/outputs"
 
-# Q_proxy (V2 only): LLM-generated synthetic text queries used as
+# Q_proxy (V2/V2.1): LLM-generated synthetic text queries used as
 # distribution anchor for Wasserstein-aware budget allocation.
 qproxy:
   # Path to queries.json (the 2,593 LLM queries from friend's qproxy folder).
@@ -84,8 +99,9 @@ train:
   log_every: 50
   # 3 seeds for proper error bars (plan Tuần 4-5 spec). Each seed re-clusters
   # + re-selects random + retrains → error bars capture selection + training
-  # noise. Total sweep: 4 methods × 6 budgets × 3 seeds = 72 runs ≈ 17 h
-  # compute. Split across multiple Kaggle sessions; run_sweep.py is RESUMABLE
+  # noise. V2.1 add-on sweep: 1 method × 6 budgets × 3 seeds = 18 runs
+  # (~12-15h on Kaggle P100 including hierarchical clustering + SW2 selection).
+  # Split across multiple Kaggle sessions; run_sweep.py is RESUMABLE
   # (reads records.csv at start and skips completed combos).
   seeds: [42, 1, 2]
   # Delete each checkpoint right after eval (72 ckpts × ~600 MB won't fit
