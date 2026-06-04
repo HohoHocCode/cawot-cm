@@ -258,6 +258,16 @@ python scripts/diagnose_v2.py --config config.yaml
 
 # Smoke test published supplementary baselines: 3 methods × 5% budget × seed 42 × 1 epoch
 python scripts/run_sweep.py --config configs/smoke_published_baselines.yaml
+python scripts/verify_result_methods.py \
+  /kaggle/working/outputs_smoke_published_baselines/eval/records.csv \
+  --expect clipscore,semdedup,k_center
+
+# Full published supplementary baselines: 3 methods × 6 budgets × 3 seeds = 54 runs
+# IMPORTANT: use this config, not config.yaml. config.yaml is V2.1-only.
+python scripts/run_sweep.py --config configs/baselines_published.yaml
+python scripts/verify_result_methods.py \
+  /kaggle/working/outputs_published_baselines/eval/records.csv \
+  --expect clipscore,semdedup,k_center
 
 # Optional tuning grid; each combo writes a distinct method label in records.csv
 python scripts/run_v2_1_grid.py --config config.yaml \
@@ -302,7 +312,12 @@ python scripts/run_sweep.py --config config.yaml
 4. **Smoke published baselines**: `python scripts/run_sweep.py --config configs/smoke_published_baselines.yaml`
    - Output: `outputs_smoke_published_baselines/eval/records.csv`
    - Pass criteria: có đủ `clipscore`, `semdedup`, `k_center`, mỗi method có `mean_R@1`, không mismatch budget.
-   - Chỉ tạo full supplementary config sau khi smoke này pass.
+   - Verify ngay bằng `python scripts/verify_result_methods.py /kaggle/working/outputs_smoke_published_baselines/eval/records.csv --expect clipscore,semdedup,k_center`.
+
+5. **Full published baselines**: `python scripts/run_sweep.py --config configs/baselines_published.yaml`
+   - Output: `outputs_published_baselines/eval/records.csv`
+   - Expected combos: `3 methods × 6 budgets × 3 seeds = 54` method-budget-seed combos.
+   - Không dùng `config.yaml` cho bước này; `config.yaml` hiện là V2.1-only.
 
 ### Multi-session strategy
 
@@ -372,6 +387,7 @@ cawot-cm-v0/
 │   ├── eval.py                  # image-text retrieval R@k + per-category split
 │   └── utils.py
 ├── configs/
+│   ├── baselines_published.yaml # full supplementary baseline sweep
 │   ├── smoke.yaml               # smoke-test config (V2 only, 5% × 1 seed × 1 epoch)
 │   ├── smoke_v2_1.yaml          # smoke-test config for V2.1
 │   └── smoke_published_baselines.yaml # smoke-test config for supplementary baselines
@@ -381,6 +397,7 @@ cawot-cm-v0/
 │   ├── diagnose_v2.py           # ★ đo W spread, budget shift, Q_proxy quality
 │   ├── run_v2_1_grid.py         # ★ grid-search alpha/lambda_image cho V2.1
 │   ├── diagnose_selection.py    # ★ pre-sweep viz (PCA + image grid + Q_proxy quality)
+│   ├── verify_result_methods.py # ★ checks result zip/csv contains expected methods
 │   └── run_sweep.py             # ★ END-TO-END sweep incl. V2.1
 └── notebooks/
     └── kaggle_v0.ipynb          # ★ Kaggle template (clone → tải → sweep → plot)
