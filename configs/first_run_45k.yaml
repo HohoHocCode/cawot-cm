@@ -1,0 +1,36 @@
+# configs/first_run_45k.yaml
+# First-run configuration for the 45K-scale ablation (plan §6, ChatGPT strategy).
+# These are the values recommended for the very first run; tune after seeing data.
+
+data:
+  scale: 45000          # subset size for the first run (NOT 1M yet)
+  budget_frac: 0.20     # 20% budget -- clearest signal-to-effort ratio first
+
+clustering:
+  k_coarse: 20
+  k_fine: 10
+
+kernel:
+  lam: 0.7              # modality weight (image vs text) in the pair kernel
+  rff_dim: 1024         # random Fourier features
+  # k_t = Gaussian RBF on normalized CLIP text embeddings (restricted to sphere)
+
+scoring:
+  alpha: 0.5            # size exponent  |C|^alpha
+  beta: 1.0             # mean-relevance weight (BACKBONE)
+  tau: 1.0              # relevance temperature
+  normalize: true       # per-proxy z/IQR normalization of d_{c,r}
+  eta_grid: [0.0, 0.5, 1.0]   # uncertainty-bonus weights to sweep (0 = life-or-death test)
+
+selection:
+  k_nn: 32
+  large_cluster_threshold: 5000   # full-candidate herding below this; sparse above
+
+run:
+  seeds: [0, 1, 2]     # start with 3 seeds; go to 5 if signal looks good
+  budgets_first: [0.20]            # add [0.05, 0.50] once 20% shows a signal
+  budgets_full_sweep: [0.05, 0.20, 0.50]
+
+proxy:
+  main_families: ["Q1_templates", "Q2_paraphrases"]   # Q3 is ablation-only
+  # attributes: provide training-side action/anomaly/scene phrases here
