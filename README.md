@@ -109,20 +109,64 @@ metrics = evaluate_coreset(coreset_indices, train_fn=my_finetune, eval_fn=my_ret
 
 ---
 
-## The decisive experiment (run this first)
+## Current status (read before running)
 
-The **`eta=0` (relevance-only) vs full** comparison is the life-or-death test for
-the proxy-disagreement idea. `run_ablation.py` already produces both coresets;
-fine-tune **`relevance_only_norm` vs `full_norm`** first:
+The four-tier strategy is **A** sanity → **B** selection benchmark → **C**
+fine-tune at **20% first** → **D** scale up (45K → 100K → 250K → 1M).
+**Do not jump to 1M.**
 
-- full wins → the story is *"proxy-disagreement improves robustness"*;
-- relevance-only wins → the story is *"finite-proxy mean-relevance allocation"*,
-  and disagreement becomes a robustness diagnostic;
-- either way the paper survives, because **mean relevance is the backbone**.
+**Stage C has been run once** (`result/result/cawot_v3.zip`) — the `eta=0`
+(`relevance_only_norm`) vs `full_norm` ablation. First read, on the 5000-pair
+eval set:
 
-Run the four tiers in order — **A** sanity (no fine-tune) → **B** selection
-benchmark → **C** fine-tune at **20% first** → **D** scale up
-(45K → 100K → 250K → 1M). **Do not jump to 1M.**
+| Direction | `full_norm` (η>0) | `relevance_only` (η=0) | Winner |
+|---|---|---|---|
+| **t2i R@1** (text→image, the deployment direction) | **88.06** | 87.46 | full **+0.6** (consistent across all subgroups: +0.2…+1.1) |
+| i2t R@1 | 88.72 | **89.48** | rel +0.76 |
+| mean R@1 | 88.39 | 88.47 | ~tie |
+
+Reading: this is **not** "kill the disagreement bonus". The bonus (η>0) **helps
+the deployment-relevant direction (t2i)** consistently, slightly hurts i2t, and
+is a wash on the symmetric mean. The story holds either way because
+**mean-relevance is the backbone**; η is a (so far t2i-positive) bonus.
+
+> ⚠️ This is a **single run with no seeds/CI and no baselines** — the gaps
+> (0.08–1.1) are within plausible noise, and we don't yet know if *either*
+> variant beats Random / SW-CAWOT / full-data. Treat it as a signal, not a result.
+
+---
+
+## Roadmap — what's left (priority order)
+
+**Now — make the result conclusive (this is what the paper actually claims):**
+- [ ] **Add the baselines + full-data** to Stage B/C at the same setup: Random,
+      CLIPScore, k-Center, **SW-CAWOT (poster)**, and full-data. The core claim is
+      "beats every selector at each budget" + "20% ≈ full-data at 1/5 the cost".
+      (η-ablation is secondary to this.)
+- [ ] **≥3–5 seeds + confidence intervals**: Wilson interval for R@1 (it is
+      Bernoulli per query) + bootstrap CI — `cawot/diagnostics.py` already has
+      `bootstrap_ci`. Only then is `full` vs `relevance_only` meaningful.
+- [ ] **Report t2i and i2t separately** (not just mean): the direction split above
+      is the whole nuance for text-based person search.
+- [ ] **Log the run config** (budget %, scale, seed) into the metrics JSON — the
+      current files don't say which setup produced them.
+
+**Code ↔ theory consistency (quick):**
+- [ ] In `scoring.normalize_per_proxy`, switch the denominator from `IQR + eps`
+      to a **floor `max(IQR, γ₀)`** with `γ₀` a real, ablatable hyperparameter
+      ({0.01, 0.05, 0.1}). This matches Lemma 2 in the theory and is ~30 min.
+
+**Then — strengthen for submission:**
+- [ ] Measure `γ₀, IQR, L_norm, ξ` empirically on PAB → fill the theory appendix.
+- [ ] Send the 4-page theory note to a statistician (TrungTin Nguyen / Khai Nguyen)
+      to vet **Theorem 1** (the `eps_RFF` term + sub-Gaussian-through-CLIP assumption).
+- [ ] Widen the grid: budgets {5, 20, 50}%, datasets (CUHK-PEDES, ICFG-PEDES,
+      COCO/Flickr30k for generality, UFineBench for robustness), full stats protocol
+      (paired permutation + Holm + partial-conjunction + ASO).
+- [ ] Write the paper — **theorem statement first**; R@k lives in experiments only.
+
+**Do NOT rush:** 1M scale, full Wasserstein-DRO, ε-net, renaming the method, or
+writing the abstract before the ablation numbers (with CI) are in.
 
 ---
 
