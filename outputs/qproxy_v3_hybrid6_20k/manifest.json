@@ -1,0 +1,2494 @@
+{
+  "family_files": {
+    "Q1_templates": "Q1_templates.json",
+    "Q2_deepseek_paraphrases": "Q2_deepseek_paraphrases.json",
+    "Q3_deepseek_anomaly": "Q3_deepseek_anomaly.json",
+    "Q4_deepseek_hard_cases": "Q4_deepseek_hard_cases.json",
+    "Q5_deepseek_normal": "Q5_deepseek_normal.json",
+    "Q6_deepseek_appearance": "Q6_deepseek_appearance.json"
+  },
+  "stats": {
+    "mode": "nonthinking",
+    "model": "deepseek-v4-pro",
+    "requested_calls": 144,
+    "n_per_family": 25,
+    "successful_calls": 152,
+    "failed_calls": 0,
+    "resumed_calls": 144,
+    "topup_calls": 8,
+    "target_total_queries": 20000,
+    "raw_query_count": 20902,
+    "unique_query_count": 20000,
+    "duplicate_rate": 0.0432,
+    "duration_seconds": 114.0,
+    "started_at": "2026-06-17T11:07:14+00:00",
+    "finished_at": "2026-06-17T11:09:08+00:00",
+    "family_preset": "hybrid",
+    "per_family_raw": {
+      "Q1_templates": 2000,
+      "Q2_deepseek_paraphrases": 3718,
+      "Q3_deepseek_anomaly": 3796,
+      "Q4_deepseek_hard_cases": 3796,
+      "Q5_deepseek_normal": 3796,
+      "Q6_deepseek_appearance": 3796
+    },
+    "per_family_unique": {
+      "Q1_templates": 2000,
+      "Q2_deepseek_paraphrases": 3355,
+      "Q3_deepseek_anomaly": 3644,
+      "Q4_deepseek_hard_cases": 3701,
+      "Q5_deepseek_normal": 3598,
+      "Q6_deepseek_appearance": 3702
+    },
+    "postprocess": {
+      "input_query_count": 20902,
+      "kept_query_count": 20087,
+      "short_query_count": 427,
+      "within_family_duplicate_count": 350,
+      "cross_family_duplicate_count": 35,
+      "malformed_query_count": 0,
+      "artifact_query_count": 3,
+      "trimmed_query_count": 87,
+      "removed_query_count": 902
+    },
+    "token_usage": {
+      "input_tokens": 104535,
+      "output_tokens": 369658,
+      "total_tokens": 474193
+    },
+    "calls": [
+      {
+        "batch_idx": 0,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 672,
+        "output_tokens": 2275,
+        "total_tokens": 2947,
+        "error": ""
+      },
+      {
+        "batch_idx": 1,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 677,
+        "output_tokens": 2572,
+        "total_tokens": 3249,
+        "error": ""
+      },
+      {
+        "batch_idx": 2,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 678,
+        "output_tokens": 2210,
+        "total_tokens": 2888,
+        "error": ""
+      },
+      {
+        "batch_idx": 3,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 676,
+        "output_tokens": 2274,
+        "total_tokens": 2950,
+        "error": ""
+      },
+      {
+        "batch_idx": 4,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 677,
+        "output_tokens": 2502,
+        "total_tokens": 3179,
+        "error": ""
+      },
+      {
+        "batch_idx": 5,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 696,
+        "output_tokens": 2754,
+        "total_tokens": 3450,
+        "error": ""
+      },
+      {
+        "batch_idx": 6,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 680,
+        "output_tokens": 2825,
+        "total_tokens": 3505,
+        "error": ""
+      },
+      {
+        "batch_idx": 7,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 681,
+        "output_tokens": 2800,
+        "total_tokens": 3481,
+        "error": ""
+      },
+      {
+        "batch_idx": 8,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 693,
+        "output_tokens": 2401,
+        "total_tokens": 3094,
+        "error": ""
+      },
+      {
+        "batch_idx": 9,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 685,
+        "output_tokens": 2809,
+        "total_tokens": 3494,
+        "error": ""
+      },
+      {
+        "batch_idx": 10,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 681,
+        "output_tokens": 2372,
+        "total_tokens": 3053,
+        "error": ""
+      },
+      {
+        "batch_idx": 11,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 681,
+        "output_tokens": 2269,
+        "total_tokens": 2950,
+        "error": ""
+      },
+      {
+        "batch_idx": 12,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 670,
+        "output_tokens": 2201,
+        "total_tokens": 2871,
+        "error": ""
+      },
+      {
+        "batch_idx": 13,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 679,
+        "output_tokens": 3107,
+        "total_tokens": 3786,
+        "error": ""
+      },
+      {
+        "batch_idx": 14,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 687,
+        "output_tokens": 2349,
+        "total_tokens": 3036,
+        "error": ""
+      },
+      {
+        "batch_idx": 15,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 690,
+        "output_tokens": 2224,
+        "total_tokens": 2914,
+        "error": ""
+      },
+      {
+        "batch_idx": 16,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 673,
+        "output_tokens": 2476,
+        "total_tokens": 3149,
+        "error": ""
+      },
+      {
+        "batch_idx": 17,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 24,
+          "Q4_deepseek_hard_cases": 24,
+          "Q5_deepseek_normal": 24,
+          "Q6_deepseek_appearance": 24
+        },
+        "input_tokens": 657,
+        "output_tokens": 1111,
+        "total_tokens": 1768,
+        "error": ""
+      },
+      {
+        "batch_idx": 18,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 679,
+        "output_tokens": 2816,
+        "total_tokens": 3495,
+        "error": ""
+      },
+      {
+        "batch_idx": 19,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 687,
+        "output_tokens": 2355,
+        "total_tokens": 3042,
+        "error": ""
+      },
+      {
+        "batch_idx": 20,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 683,
+        "output_tokens": 2702,
+        "total_tokens": 3385,
+        "error": ""
+      },
+      {
+        "batch_idx": 21,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 671,
+        "output_tokens": 2740,
+        "total_tokens": 3411,
+        "error": ""
+      },
+      {
+        "batch_idx": 22,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 675,
+        "output_tokens": 2504,
+        "total_tokens": 3179,
+        "error": ""
+      },
+      {
+        "batch_idx": 23,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 681,
+        "output_tokens": 2466,
+        "total_tokens": 3147,
+        "error": ""
+      },
+      {
+        "batch_idx": 24,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 689,
+        "output_tokens": 2370,
+        "total_tokens": 3059,
+        "error": ""
+      },
+      {
+        "batch_idx": 25,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 678,
+        "output_tokens": 2137,
+        "total_tokens": 2815,
+        "error": ""
+      },
+      {
+        "batch_idx": 26,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 670,
+        "output_tokens": 2253,
+        "total_tokens": 2923,
+        "error": ""
+      },
+      {
+        "batch_idx": 27,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 688,
+        "output_tokens": 2198,
+        "total_tokens": 2886,
+        "error": ""
+      },
+      {
+        "batch_idx": 28,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 692,
+        "output_tokens": 2521,
+        "total_tokens": 3213,
+        "error": ""
+      },
+      {
+        "batch_idx": 29,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 686,
+        "output_tokens": 2277,
+        "total_tokens": 2963,
+        "error": ""
+      },
+      {
+        "batch_idx": 30,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 672,
+        "output_tokens": 2539,
+        "total_tokens": 3211,
+        "error": ""
+      },
+      {
+        "batch_idx": 31,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 682,
+        "output_tokens": 2236,
+        "total_tokens": 2918,
+        "error": ""
+      },
+      {
+        "batch_idx": 32,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 679,
+        "output_tokens": 2516,
+        "total_tokens": 3195,
+        "error": ""
+      },
+      {
+        "batch_idx": 33,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 663,
+        "output_tokens": 2648,
+        "total_tokens": 3311,
+        "error": ""
+      },
+      {
+        "batch_idx": 34,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 679,
+        "output_tokens": 2310,
+        "total_tokens": 2989,
+        "error": ""
+      },
+      {
+        "batch_idx": 35,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 671,
+        "output_tokens": 2260,
+        "total_tokens": 2931,
+        "error": ""
+      },
+      {
+        "batch_idx": 36,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 683,
+        "output_tokens": 2436,
+        "total_tokens": 3119,
+        "error": ""
+      },
+      {
+        "batch_idx": 37,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 689,
+        "output_tokens": 2256,
+        "total_tokens": 2945,
+        "error": ""
+      },
+      {
+        "batch_idx": 38,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 668,
+        "output_tokens": 2240,
+        "total_tokens": 2908,
+        "error": ""
+      },
+      {
+        "batch_idx": 39,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 677,
+        "output_tokens": 2220,
+        "total_tokens": 2897,
+        "error": ""
+      },
+      {
+        "batch_idx": 40,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 684,
+        "output_tokens": 2412,
+        "total_tokens": 3096,
+        "error": ""
+      },
+      {
+        "batch_idx": 41,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 681,
+        "output_tokens": 2392,
+        "total_tokens": 3073,
+        "error": ""
+      },
+      {
+        "batch_idx": 42,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 683,
+        "output_tokens": 2418,
+        "total_tokens": 3101,
+        "error": ""
+      },
+      {
+        "batch_idx": 43,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 683,
+        "output_tokens": 2680,
+        "total_tokens": 3363,
+        "error": ""
+      },
+      {
+        "batch_idx": 44,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 666,
+        "output_tokens": 2203,
+        "total_tokens": 2869,
+        "error": ""
+      },
+      {
+        "batch_idx": 45,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 675,
+        "output_tokens": 2470,
+        "total_tokens": 3145,
+        "error": ""
+      },
+      {
+        "batch_idx": 46,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 698,
+        "output_tokens": 2316,
+        "total_tokens": 3014,
+        "error": ""
+      },
+      {
+        "batch_idx": 47,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 686,
+        "output_tokens": 2604,
+        "total_tokens": 3290,
+        "error": ""
+      },
+      {
+        "batch_idx": 48,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 671,
+        "output_tokens": 2221,
+        "total_tokens": 2892,
+        "error": ""
+      },
+      {
+        "batch_idx": 49,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 681,
+        "output_tokens": 2457,
+        "total_tokens": 3138,
+        "error": ""
+      },
+      {
+        "batch_idx": 50,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 684,
+        "output_tokens": 2694,
+        "total_tokens": 3378,
+        "error": ""
+      },
+      {
+        "batch_idx": 51,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 684,
+        "output_tokens": 2547,
+        "total_tokens": 3231,
+        "error": ""
+      },
+      {
+        "batch_idx": 52,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 675,
+        "output_tokens": 2431,
+        "total_tokens": 3106,
+        "error": ""
+      },
+      {
+        "batch_idx": 53,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 689,
+        "output_tokens": 2382,
+        "total_tokens": 3071,
+        "error": ""
+      },
+      {
+        "batch_idx": 54,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 665,
+        "output_tokens": 2532,
+        "total_tokens": 3197,
+        "error": ""
+      },
+      {
+        "batch_idx": 55,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 676,
+        "output_tokens": 2243,
+        "total_tokens": 2919,
+        "error": ""
+      },
+      {
+        "batch_idx": 56,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 680,
+        "output_tokens": 2248,
+        "total_tokens": 2928,
+        "error": ""
+      },
+      {
+        "batch_idx": 57,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 702,
+        "output_tokens": 2321,
+        "total_tokens": 3023,
+        "error": ""
+      },
+      {
+        "batch_idx": 58,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 671,
+        "output_tokens": 2690,
+        "total_tokens": 3361,
+        "error": ""
+      },
+      {
+        "batch_idx": 59,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 677,
+        "output_tokens": 3255,
+        "total_tokens": 3932,
+        "error": ""
+      },
+      {
+        "batch_idx": 60,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 677,
+        "output_tokens": 2658,
+        "total_tokens": 3335,
+        "error": ""
+      },
+      {
+        "batch_idx": 61,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 694,
+        "output_tokens": 3042,
+        "total_tokens": 3736,
+        "error": ""
+      },
+      {
+        "batch_idx": 62,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 667,
+        "output_tokens": 2164,
+        "total_tokens": 2831,
+        "error": ""
+      },
+      {
+        "batch_idx": 63,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 697,
+        "output_tokens": 2779,
+        "total_tokens": 3476,
+        "error": ""
+      },
+      {
+        "batch_idx": 64,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 680,
+        "output_tokens": 2143,
+        "total_tokens": 2823,
+        "error": ""
+      },
+      {
+        "batch_idx": 65,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 686,
+        "output_tokens": 2360,
+        "total_tokens": 3046,
+        "error": ""
+      },
+      {
+        "batch_idx": 66,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 664,
+        "output_tokens": 2502,
+        "total_tokens": 3166,
+        "error": ""
+      },
+      {
+        "batch_idx": 67,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 680,
+        "output_tokens": 2558,
+        "total_tokens": 3238,
+        "error": ""
+      },
+      {
+        "batch_idx": 68,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 686,
+        "output_tokens": 2544,
+        "total_tokens": 3230,
+        "error": ""
+      },
+      {
+        "batch_idx": 69,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 677,
+        "output_tokens": 2494,
+        "total_tokens": 3171,
+        "error": ""
+      },
+      {
+        "batch_idx": 70,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 675,
+        "output_tokens": 2729,
+        "total_tokens": 3404,
+        "error": ""
+      },
+      {
+        "batch_idx": 71,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 681,
+        "output_tokens": 2522,
+        "total_tokens": 3203,
+        "error": ""
+      },
+      {
+        "batch_idx": 72,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 679,
+        "output_tokens": 2467,
+        "total_tokens": 3146,
+        "error": ""
+      },
+      {
+        "batch_idx": 73,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 674,
+        "output_tokens": 2148,
+        "total_tokens": 2822,
+        "error": ""
+      },
+      {
+        "batch_idx": 74,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 671,
+        "output_tokens": 2882,
+        "total_tokens": 3553,
+        "error": ""
+      },
+      {
+        "batch_idx": 75,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 24,
+          "Q4_deepseek_hard_cases": 24,
+          "Q5_deepseek_normal": 24,
+          "Q6_deepseek_appearance": 24
+        },
+        "input_tokens": 680,
+        "output_tokens": 2168,
+        "total_tokens": 2848,
+        "error": ""
+      },
+      {
+        "batch_idx": 76,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 681,
+        "output_tokens": 2247,
+        "total_tokens": 2928,
+        "error": ""
+      },
+      {
+        "batch_idx": 77,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 685,
+        "output_tokens": 2277,
+        "total_tokens": 2962,
+        "error": ""
+      },
+      {
+        "batch_idx": 78,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 673,
+        "output_tokens": 2686,
+        "total_tokens": 3359,
+        "error": ""
+      },
+      {
+        "batch_idx": 79,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 685,
+        "output_tokens": 2138,
+        "total_tokens": 2823,
+        "error": ""
+      },
+      {
+        "batch_idx": 80,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 687,
+        "output_tokens": 2653,
+        "total_tokens": 3340,
+        "error": ""
+      },
+      {
+        "batch_idx": 81,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 686,
+        "output_tokens": 2259,
+        "total_tokens": 2945,
+        "error": ""
+      },
+      {
+        "batch_idx": 82,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 672,
+        "output_tokens": 2419,
+        "total_tokens": 3091,
+        "error": ""
+      },
+      {
+        "batch_idx": 83,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 685,
+        "output_tokens": 2515,
+        "total_tokens": 3200,
+        "error": ""
+      },
+      {
+        "batch_idx": 84,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 682,
+        "output_tokens": 2712,
+        "total_tokens": 3394,
+        "error": ""
+      },
+      {
+        "batch_idx": 85,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 24,
+          "Q4_deepseek_hard_cases": 24,
+          "Q5_deepseek_normal": 24,
+          "Q6_deepseek_appearance": 24
+        },
+        "input_tokens": 672,
+        "output_tokens": 2476,
+        "total_tokens": 3148,
+        "error": ""
+      },
+      {
+        "batch_idx": 86,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 667,
+        "output_tokens": 2201,
+        "total_tokens": 2868,
+        "error": ""
+      },
+      {
+        "batch_idx": 87,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 692,
+        "output_tokens": 2325,
+        "total_tokens": 3017,
+        "error": ""
+      },
+      {
+        "batch_idx": 88,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 673,
+        "output_tokens": 2250,
+        "total_tokens": 2923,
+        "error": ""
+      },
+      {
+        "batch_idx": 89,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 686,
+        "output_tokens": 2293,
+        "total_tokens": 2979,
+        "error": ""
+      },
+      {
+        "batch_idx": 90,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 670,
+        "output_tokens": 2318,
+        "total_tokens": 2988,
+        "error": ""
+      },
+      {
+        "batch_idx": 91,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 672,
+        "output_tokens": 2583,
+        "total_tokens": 3255,
+        "error": ""
+      },
+      {
+        "batch_idx": 92,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 683,
+        "output_tokens": 2584,
+        "total_tokens": 3267,
+        "error": ""
+      },
+      {
+        "batch_idx": 93,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 655,
+        "output_tokens": 2791,
+        "total_tokens": 3446,
+        "error": ""
+      },
+      {
+        "batch_idx": 94,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 678,
+        "output_tokens": 2513,
+        "total_tokens": 3191,
+        "error": ""
+      },
+      {
+        "batch_idx": 95,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 677,
+        "output_tokens": 2262,
+        "total_tokens": 2939,
+        "error": ""
+      },
+      {
+        "batch_idx": 96,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 667,
+        "output_tokens": 2435,
+        "total_tokens": 3102,
+        "error": ""
+      },
+      {
+        "batch_idx": 97,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 670,
+        "output_tokens": 2242,
+        "total_tokens": 2912,
+        "error": ""
+      },
+      {
+        "batch_idx": 98,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 671,
+        "output_tokens": 2134,
+        "total_tokens": 2805,
+        "error": ""
+      },
+      {
+        "batch_idx": 99,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 669,
+        "output_tokens": 2490,
+        "total_tokens": 3159,
+        "error": ""
+      },
+      {
+        "batch_idx": 100,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 691,
+        "output_tokens": 2274,
+        "total_tokens": 2965,
+        "error": ""
+      },
+      {
+        "batch_idx": 101,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 677,
+        "output_tokens": 2419,
+        "total_tokens": 3096,
+        "error": ""
+      },
+      {
+        "batch_idx": 102,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 682,
+        "output_tokens": 2279,
+        "total_tokens": 2961,
+        "error": ""
+      },
+      {
+        "batch_idx": 103,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 681,
+        "output_tokens": 2439,
+        "total_tokens": 3120,
+        "error": ""
+      },
+      {
+        "batch_idx": 104,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 684,
+        "output_tokens": 2217,
+        "total_tokens": 2901,
+        "error": ""
+      },
+      {
+        "batch_idx": 105,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 685,
+        "output_tokens": 2388,
+        "total_tokens": 3073,
+        "error": ""
+      },
+      {
+        "batch_idx": 106,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 683,
+        "output_tokens": 2209,
+        "total_tokens": 2892,
+        "error": ""
+      },
+      {
+        "batch_idx": 107,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 685,
+        "output_tokens": 2147,
+        "total_tokens": 2832,
+        "error": ""
+      },
+      {
+        "batch_idx": 108,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 682,
+        "output_tokens": 2491,
+        "total_tokens": 3173,
+        "error": ""
+      },
+      {
+        "batch_idx": 109,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 677,
+        "output_tokens": 2271,
+        "total_tokens": 2948,
+        "error": ""
+      },
+      {
+        "batch_idx": 110,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 670,
+        "output_tokens": 2443,
+        "total_tokens": 3113,
+        "error": ""
+      },
+      {
+        "batch_idx": 111,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 685,
+        "output_tokens": 2282,
+        "total_tokens": 2967,
+        "error": ""
+      },
+      {
+        "batch_idx": 112,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 678,
+        "output_tokens": 2344,
+        "total_tokens": 3022,
+        "error": ""
+      },
+      {
+        "batch_idx": 113,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 676,
+        "output_tokens": 2717,
+        "total_tokens": 3393,
+        "error": ""
+      },
+      {
+        "batch_idx": 114,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 675,
+        "output_tokens": 2565,
+        "total_tokens": 3240,
+        "error": ""
+      },
+      {
+        "batch_idx": 115,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 689,
+        "output_tokens": 2679,
+        "total_tokens": 3368,
+        "error": ""
+      },
+      {
+        "batch_idx": 116,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 682,
+        "output_tokens": 2756,
+        "total_tokens": 3438,
+        "error": ""
+      },
+      {
+        "batch_idx": 117,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 682,
+        "output_tokens": 2179,
+        "total_tokens": 2861,
+        "error": ""
+      },
+      {
+        "batch_idx": 118,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 683,
+        "output_tokens": 2469,
+        "total_tokens": 3152,
+        "error": ""
+      },
+      {
+        "batch_idx": 119,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 675,
+        "output_tokens": 2511,
+        "total_tokens": 3186,
+        "error": ""
+      },
+      {
+        "batch_idx": 120,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 675,
+        "output_tokens": 2582,
+        "total_tokens": 3257,
+        "error": ""
+      },
+      {
+        "batch_idx": 121,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 688,
+        "output_tokens": 2538,
+        "total_tokens": 3226,
+        "error": ""
+      },
+      {
+        "batch_idx": 122,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 686,
+        "output_tokens": 2196,
+        "total_tokens": 2882,
+        "error": ""
+      },
+      {
+        "batch_idx": 123,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 682,
+        "output_tokens": 2432,
+        "total_tokens": 3114,
+        "error": ""
+      },
+      {
+        "batch_idx": 124,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 683,
+        "output_tokens": 2847,
+        "total_tokens": 3530,
+        "error": ""
+      },
+      {
+        "batch_idx": 125,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 686,
+        "output_tokens": 2206,
+        "total_tokens": 2892,
+        "error": ""
+      },
+      {
+        "batch_idx": 126,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 681,
+        "output_tokens": 2217,
+        "total_tokens": 2898,
+        "error": ""
+      },
+      {
+        "batch_idx": 127,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 682,
+        "output_tokens": 2263,
+        "total_tokens": 2945,
+        "error": ""
+      },
+      {
+        "batch_idx": 128,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 678,
+        "output_tokens": 2279,
+        "total_tokens": 2957,
+        "error": ""
+      },
+      {
+        "batch_idx": 129,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 669,
+        "output_tokens": 2491,
+        "total_tokens": 3160,
+        "error": ""
+      },
+      {
+        "batch_idx": 130,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 670,
+        "output_tokens": 2424,
+        "total_tokens": 3094,
+        "error": ""
+      },
+      {
+        "batch_idx": 131,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 681,
+        "output_tokens": 2275,
+        "total_tokens": 2956,
+        "error": ""
+      },
+      {
+        "batch_idx": 132,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 679,
+        "output_tokens": 2634,
+        "total_tokens": 3313,
+        "error": ""
+      },
+      {
+        "batch_idx": 133,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 24,
+          "Q4_deepseek_hard_cases": 24,
+          "Q5_deepseek_normal": 24,
+          "Q6_deepseek_appearance": 24
+        },
+        "input_tokens": 691,
+        "output_tokens": 2733,
+        "total_tokens": 3424,
+        "error": ""
+      },
+      {
+        "batch_idx": 134,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 687,
+        "output_tokens": 2210,
+        "total_tokens": 2897,
+        "error": ""
+      },
+      {
+        "batch_idx": 135,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 671,
+        "output_tokens": 2434,
+        "total_tokens": 3105,
+        "error": ""
+      },
+      {
+        "batch_idx": 136,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 683,
+        "output_tokens": 2694,
+        "total_tokens": 3377,
+        "error": ""
+      },
+      {
+        "batch_idx": 137,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 682,
+        "output_tokens": 2363,
+        "total_tokens": 3045,
+        "error": ""
+      },
+      {
+        "batch_idx": 138,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 689,
+        "output_tokens": 2481,
+        "total_tokens": 3170,
+        "error": ""
+      },
+      {
+        "batch_idx": 139,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 692,
+        "output_tokens": 2506,
+        "total_tokens": 3198,
+        "error": ""
+      },
+      {
+        "batch_idx": 140,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 686,
+        "output_tokens": 2168,
+        "total_tokens": 2854,
+        "error": ""
+      },
+      {
+        "batch_idx": 141,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 679,
+        "output_tokens": 2630,
+        "total_tokens": 3309,
+        "error": ""
+      },
+      {
+        "batch_idx": 142,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 678,
+        "output_tokens": 2645,
+        "total_tokens": 3323,
+        "error": ""
+      },
+      {
+        "batch_idx": 143,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 677,
+        "output_tokens": 2510,
+        "total_tokens": 3187,
+        "error": ""
+      },
+      {
+        "batch_idx": 144,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 826,
+        "output_tokens": 2321,
+        "total_tokens": 3147,
+        "error": ""
+      },
+      {
+        "batch_idx": 145,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 819,
+        "output_tokens": 2177,
+        "total_tokens": 2996,
+        "error": ""
+      },
+      {
+        "batch_idx": 146,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 837,
+        "output_tokens": 2415,
+        "total_tokens": 3252,
+        "error": ""
+      },
+      {
+        "batch_idx": 147,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 839,
+        "output_tokens": 2480,
+        "total_tokens": 3319,
+        "error": ""
+      },
+      {
+        "batch_idx": 148,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 833,
+        "output_tokens": 2452,
+        "total_tokens": 3285,
+        "error": ""
+      },
+      {
+        "batch_idx": 149,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 837,
+        "output_tokens": 2111,
+        "total_tokens": 2948,
+        "error": ""
+      },
+      {
+        "batch_idx": 150,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 24,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 842,
+        "output_tokens": 2430,
+        "total_tokens": 3272,
+        "error": ""
+      },
+      {
+        "batch_idx": 151,
+        "mode": "nonthinking",
+        "success": true,
+        "query_counts": {
+          "Q2_deepseek_paraphrases": 25,
+          "Q3_deepseek_anomaly": 25,
+          "Q4_deepseek_hard_cases": 25,
+          "Q5_deepseek_normal": 25,
+          "Q6_deepseek_appearance": 25
+        },
+        "input_tokens": 833,
+        "output_tokens": 2425,
+        "total_tokens": 3258,
+        "error": ""
+      }
+    ]
+  }
+}
