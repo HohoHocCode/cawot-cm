@@ -97,11 +97,15 @@ def main():
               f"corr(size,budget)={rep['budget_vs_size_corr']}")
 
     # ---- baselines + proposed overlap at the same budget ----
+    # METHOD = finite-proxy MEAN-RELEVANCE (eta=0). The proxy-disagreement bonus
+    # (eta>0) was empirically inert (u ~1000x smaller than abar; full vs
+    # relevance-only coresets ~99.98% identical even with 6 diverse families), so
+    # it is dropped from the method and kept only as an ablation in the grid above.
     sel = run_selectors(
         z_v, z_t, proxies, budget_total=budget,
         methods=("random", "clipscore", "kcenter", "sw_cawot", "proposed"),
         seed=args.seed, out_dir=os.path.join(args.out, "selectors"),
-        proposed_kwargs=dict(common, eta=1.0, beta=args.beta, normalize=True))
+        proposed_kwargs=dict(common, eta=0.0, beta=args.beta, normalize=True))
 
     # ---- Stage-A noisy-group check (synthetic only) ----
     extra = {}

@@ -142,28 +142,30 @@ metrics = evaluate_coreset(coreset_indices, train_fn=my_finetune, eval_fn=my_ret
 
 ## Current status (read before running)
 
-The four-tier strategy is **A** sanity → **B** selection benchmark → **C**
-fine-tune at **20% first** → **D** scale up (45K → 100K → 250K → 1M).
-**Do not jump to 1M.**
+**Method is frozen: `proposed` = finite-proxy MEAN-RELEVANCE coreset (η = 0).**
+`s_c = |C_c|^α · (1 + β·abar_c)`.
 
-**Stage C has been run once** (`result/result/cawot_v3.zip`) — the `eta=0`
-(`relevance_only_norm`) vs `full_norm` ablation. First read, on the 5000-pair
-eval set:
+**Why η was dropped — confirmed on the real 6-family run** (`result/cawot_v3_2.zip`,
+`outputs/pab45k_6proxy/`, PAB 45K @ 20%): the proxy-disagreement bonus `u_c` is
+empirically inert — `u` (≈0.0006) is ~**1000× smaller** than `abar` (0.17–0.70),
+so `full` vs `relevance-only` coresets are **99.98% identical** (differ by 1 of
+9000) **even with 6 diverse families** (anomaly/normal/hard/appearance/…). The
+families agree on cluster relevance in CLIP space → disagreement ≈ 0. `u` is kept
+only as an honest **negative-result ablation**, not part of the method.
 
-| Direction | `full_norm` (η>0) | `relevance_only` (η=0) | Winner |
-|---|---|---|---|
-| **t2i R@1** (text→image, the deployment direction) | **88.06** | 87.46 | full **+0.6** (consistent across all subgroups: +0.2…+1.1) |
-| i2t R@1 | 88.72 | **89.48** | rel +0.76 |
-| mean R@1 | 88.39 | 88.47 | ~tie |
+**What is NOT proven yet:** the 6-family run produced *coresets + diagnostics but
+no retrieval numbers* (Stage C not run on it). And `proposed` has ~random-level
+overlap (0.11) with **every** baseline, so downstream R@1 is genuinely unknown.
+The earlier 5K Stage C was on the old 2-family setup — not evidence for V3.
 
-Reading: this is **not** "kill the disagreement bonus". The bonus (η>0) **helps
-the deployment-relevant direction (t2i)** consistently, slightly hurts i2t, and
-is a wash on the symmetric mean. The story holds either way because
-**mean-relevance is the backbone**; η is a (so far t2i-positive) bonus.
+**To actually prove the method**, follow **[docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)**:
+low budget (2–5%) on the **real PAB test (1,978)**, all baselines **+ full_data**,
+≥3 seeds, t2i/i2t split, Wilson CI. Aggregate with
+**`scripts/make_results_table.py`** → a paper-ready table that lists any missing
+cells (so no claim is made on incomplete data).
 
-> ⚠️ This is a **single run with no seeds/CI and no baselines** — the gaps
-> (0.08–1.1) are within plausible noise, and we don't yet know if *either*
-> variant beats Random / SW-CAWOT / full-data. Treat it as a signal, not a result.
+The four-tier order still holds: **A** sanity → **B** selection benchmark →
+**C** fine-tune (**at 5% first**, real test) → **D** scale up. **Do not jump to 1M.**
 
 ---
 
