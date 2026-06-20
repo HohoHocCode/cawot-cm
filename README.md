@@ -97,6 +97,37 @@ PYTHONPATH=. python scripts/run_ablation.py \
 
 Outputs (`coreset_*.npy`, `runs/`) are git-ignored on purpose.
 
+### 2b. Run with the LLM-generated 6-family proxy (`qproxy_v3`)
+
+If you generated proxy families with `cawot/qproxy_v3.py` (e.g.
+`outputs/qproxy_v3_hybrid6_20k/` with `Q1…Q6` JSON files of raw text queries),
+first **encode them to `.npy`**, then feed all six to the ablation.
+
+```bash
+# (a) sanity-check parsing, no GPU:
+python scripts/embed_qproxy_families.py \
+    --proxy-dir outputs/qproxy_v3_hybrid6_20k --out-dir cache --dry-run
+
+# (b) encode with the SAME CLIP model that produced z_v.npy/z_t.npy:
+python scripts/embed_qproxy_families.py \
+    --proxy-dir outputs/qproxy_v3_hybrid6_20k --out-dir cache \
+    --backend open_clip --model ViT-B-32 --pretrained openai
+
+# (c) run the 6-family ablation (it prints the exact --proxies line):
+PYTHONPATH=. python scripts/run_ablation.py \
+    --zv cache/z_v.npy --zt cache/z_t.npy \
+    --proxies cache/Q1_templates.npy cache/Q2_deepseek_paraphrases.npy \
+              cache/Q3_deepseek_anomaly.npy cache/Q4_deepseek_hard_cases.npy \
+              cache/Q5_deepseek_normal.npy cache/Q6_deepseek_appearance.npy \
+    --budget-frac 0.2 --out runs/pab45k_6proxy
+```
+
+> ⚠️ **Encoder must match.** Proxies and the pool (`z_v.npy`/`z_t.npy`) must be
+> encoded by the *same* CLIP weights. Both ViT-B/16 (openai) and ViT-B-32
+> (open_clip) are 512-d, so a mismatch will **not** error — it silently produces
+> garbage relevance. `run_ablation.py` already accepts any number of `--proxies`;
+> family weights `pi` default to uniform (1/R), which runs fine — tune later.
+
 ### 3. Stage C — fine-tune + R@1/R@5/R@10/mAP
 
 Selection (Stages A/B) is fully runnable on its own. To turn a selected coreset
@@ -183,6 +214,13 @@ writing the abstract before the ablation numbers (with CI) are in.
   whole pipeline (we use kernel **herding**, not kernel **thinning**).
 - `Q_3` (validation-failure proxies) is **ablation-only**, never in the main
   method, and never derived from test data.
+  - **Naming note:** this `Q_3` (validation-failure) is **not** the same thing as
+    `Q3_deepseek_anomaly` in `qproxy_v3`'s hybrid set. The latter is an ordinary
+    *anomaly-behavior* family built from training-side semantics and is fine to
+    use in the main method — the shared "Q3" label is incidental. Treat the six
+    `qproxy_v3` families (`template / paraphrase / anomaly / hard / normal /
+    appearance`) as the main proxy families; the validation-failure proxy is a
+    separate, ablation-only construct.
 
 These mark exactly which claims are proven, which are empirical, and which still
 need a statistician's eye before submission.
