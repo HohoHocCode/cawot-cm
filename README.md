@@ -156,9 +156,24 @@ the win criteria up front:
   `u` (≈0.0006) is ~**1000×** smaller than `abar` (0.17–0.70); `full` vs
   `relevance-only` coresets are **99.98% identical** (1 of 9000) even with 6 diverse
   families. The families agree on cluster relevance in CLIP space. Method = mean-relevance.
-- ⚠️ **No retrieval result yet.** The 6-family run produced coresets + diagnostics
-  but **no R@1**, and `proposed` has ~random-level overlap (0.11) with every
-  baseline — downstream R@1 is genuinely unknown until Stage C runs (Quickstart §4–5).
+- 🟠 **First Stage-C R@1 (≈5% budget, 2250 train) is a NULL result** —
+  `result/cawot_v3_3.zip`, `outputs/stage_c/`, single seed, eval on the **synthetic
+  val split (5000)**. On `t2i_R@1` (the deployment direction) **no method beats
+  random**; everything is within overlapping Wilson CIs (~±1.1):
+
+  | kcenter | random | proposed | sw_cawot | clipscore |
+  |---|---|---|---|---|
+  | 79.52 | 79.02 | 78.94 | 78.94 | 78.50 |
+
+  `proposed` is nominally top on *mean*/`i2t` (80.32 / 81.70) but that is within
+  noise and **not** on `t2i` — do **not** cherry-pick it as a win.
+- ⚠️ **Not yet the decisive test.** The eval above is `val_split` (synthetic,
+  in-distribution, easy — every method ties at ~88% at higher budget), **single
+  seed**, and **no `full_data`**. The pre-registered decisive run (see
+  [docs/EXPERIMENTS.md](docs/EXPERIMENTS.md)) is still pending: **PAB real test
+  (1,978) + ≥3 seeds + `full_data`, at 2% and 5%**. If `proposed` ties random there
+  too, pivot the contribution (efficiency-vs-full-data / theory / other benchmark)
+  per EXPERIMENTS.md §6.
 
 ---
 
